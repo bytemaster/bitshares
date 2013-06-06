@@ -35,7 +35,7 @@ ENDIF(WIN32)
 
 include_directories( ${CMAKE_SOURCE_DIR}/fc/include )
 include_directories( ${CMAKE_SOURCE_DIR}/fc/vendor/boost_1.51/include )
-#include_directories( ${Boost_INCLUDE_DIR} )
+include_directories( ${Boost_INCLUDE_DIR} )
    
 #link_directories( ${Boost_LIBRARY_DIRS} )
 
@@ -43,6 +43,8 @@ add_subdirectory( fc )
 set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_DATE_TIME_LIBRARY} ${Boost_CHRONO_LIBRARY} ${ALL_OPENSSL_LIBRARIES})
 
 set( sources 
+     src/block_chain.cpp
+     src/address.cpp
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )
@@ -50,3 +52,7 @@ add_library( bshare ${sources} )
 add_executable( pow_test tests/pow_test.cpp )
 target_link_libraries( pow_test bshare fc ${BOOST_LIBRARIES})
 #setup_library( bshare SOURCES ${sources} LIBRARY_TYPE STATIC )
+
+
+add_executable( bitshares src/main.cpp )
+target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})
