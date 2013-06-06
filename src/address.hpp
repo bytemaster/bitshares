@@ -1,6 +1,7 @@
 #pragma once
 #include <fc/reflect/reflect.hpp>
 #include <fc/crypto/elliptic.hpp>
+#include <fc/array.hpp>
 #include <string>
 
 
@@ -37,6 +38,26 @@ struct address
 };
 FC_REFLECT( address, (addr) )
 
+namespace fc 
+{ 
+   void to_variant( const ::address& var,  variant& vo );
+   void from_variant( const variant& var,  ::address& vo );
+}
+
+namespace std
+{
+   template<>
+   struct hash<::address> 
+   {
+       public:
+         size_t operator()(const ::address &a) const 
+         {
+            size_t s;
+            memcpy( (char*)&s, &a.addr.data[sizeof(a)-sizeof(s)], sizeof(s) );
+            return s;
+         }
+   };
+}
 
 inline bool operator == ( const address& a, const address& b ) { return a.addr == b.addr; }
 inline bool operator != ( const address& a, const address& b ) { return a.addr != b.addr; }

@@ -1,13 +1,26 @@
+#include <fc/io/raw.hpp>
 #include "wallet.hpp"
 #include <fc/filesystem.hpp>
+#include <fc/exception/exception.hpp>
+#include <fc/crypto/blowfish.hpp>
+#include <fc/io/fstream.hpp>
+#include <unordered_map>
 
 struct private_wallet_key
 {
-   fc::string            addr;
+   static private_wallet_key create()
+   {
+        private_wallet_key k;
+        k.priv_key  = fc::ecc::private_key::generate();
+        k.pub_key = k.priv_key.get_public_key();
+        k.addr = address(k.pub_key);
+        return k;
+   }
+   address               addr;
    fc::ecc::public_key   pub_key;
    fc::ecc::private_key  priv_key;
 };
-FC_REFLECT( public_wallet_key, (address)(pub_key)(priv_key)(used) )
+FC_REFLECT( private_wallet_key, (addr)(pub_key)(priv_key) )
 
 struct wallet_format
 {
@@ -15,12 +28,14 @@ struct wallet_format
    fc::sha512                       checksum;
    std::vector<private_wallet_key>  private_keys;  // public/private keys
 };
+FC_REFLECT( wallet_format, (version)(checksum)(private_keys) )
 
 namespace detail
 {
   class wallet_impl
   {
      public:
+        bool                             _is_locked;
         fc::path                         _wallet_file;   // file where wallet is stored.
         std::vector<address>             _addresses;     // all used addresses
         std::vector<private_wallet_key>  _private_keys;  // public/private keys
@@ -45,33 +60,41 @@ fc::path wallet::wallet_file()const
 
 void wallet::load( const fc::path& walletdat, const std::string& password )
 {
-  if( !fc::exists( walletdat ) ) 
-  {
-      FC_THROW_EXCEPTION( file_not_found_exception, "Unable to wallet ${file}", ("file",walletdat) );
-  }
-  fc::blowfish bf;
-  auto h = fc::sha256::hash( password.c_str(), password.size() );
-  bf.start( (unsigned char*)&h, sizeof(h) );
+   if( !fc::exists( walletdat ) ) 
+   {
+       FC_THROW_EXCEPTION( file_not_found_exception, "Unable to wallet ${file}", ("file",walletdat) );
+   }
+   fc::blowfish bf;
+   auto h = fc::sha256::hash( password.c_str(), password.size() );
+   bf.start( (unsigned char*)&h, sizeof(h) );
+   
+   std::vector<char> file_data( fc::file_size(walletdat) );
+   fc::ifstream in(walletdat, fc::ifstream::binary );
+   in.read( file_data.data(), file_data.size() );
+   bf.decrypt( (unsigned char*)file_data.data(), file_data.size() );
+   
+   auto check = fc::sha512::hash( file_data.data()+4+sizeof(fc::sha512), 
+                                  file_data.size()-4-sizeof(fc::sha512) );
+   
+   if( memcmp( (char*)&check, file_data.data()+4, sizeof(check) ) != 0 )
+   {
+      FC_THROW_EXCEPTION( exception, "Error decrypting wallet" );
+   }
+   
+   my->_private_keys = fc::raw::unpack<wallet_format>( file_data ).private_keys;
+   
+   my->_wallet_file = walletdat;
+   my->_is_locked   = false;
 
-  std::vector<char> file_data( fc::file_size(walletdat) );
-  fc::ifstream in(walletdat, fc::ifstream::binary );
-  in.read( file_data.data(), file_data.size() );
-  bf.decrypt( file_data.data(), file_data.size() );
+   my->_address_index.clear();
+   
+   // index the keys
+   for( uint32_t i = 0; i < my->_private_keys.size(); ++i )
+   {
+      my->_address_index[my->_private_keys[i].addr] = i;
+   }
 
-  auto check = fc::sha512::hash( file_data.data()+4+sizeof(fc::sha512), 
-                                 file_data.size()-4-sizeof(fc::sha512 );
-
-  if( memcmp( (char*)&check, file_data.data()+4, sizeof(check) ) != 0 )
-  {
-     FC_THROW_EXCEPTION( exception, "Error decrypting wallet" );
-  }
-
-  _private_keys = fc::raw::unpack<wallet_format>( _private_keys ).private_keys;
-
-  my->_wallet_file = walletdat;
-  my->_is_locked   = false;
-
-  // TODO: index the private keys / addresses...
+   // TODO: should we perform a sanity check on the addresses?
 }
 
 
@@ -103,30 +126,30 @@ void wallet::save( const fc::path& walletdat, const std::string& password )
     fc::blowfish bf;
     auto h = fc::sha256::hash( password.c_str(), password.size() );
     bf.start( (unsigned char*)&h, sizeof(h) );
-    bf.encrypt( vec.data(), vec.size() );
+    bf.encrypt( (unsigned char*)vec.data(), vec.size() );
 
     fc::ofstream o( walletdat );
-    o.write( vec.data(), vec.size();
+    o.write( vec.data(), vec.size() );
 }
 
 bool wallet::is_locked()const
 {
-  return my->_is_locked();
+  return my->_is_locked;
 }
 
 /** nulls all private keys 
  **/
 void wallet::lock()
 {
-  // TODO: check for unsaved private keys and throw an exception!
-  
-  for( auto itr = my->_private_keys.begin();
-            itr != my->_private_keys.end();
-            ++itr )
-  {
-      itr->priv_key = fc::ecc:private_key(); // clear it.
-  }
-  my->_is_locked = true;
+   // TODO: check for unsaved private keys and throw an exception!
+   
+   for( auto itr = my->_private_keys.begin();
+             itr != my->_private_keys.end();
+             ++itr )
+   {
+       itr->priv_key = fc::ecc::private_key(); // clear it.
+   }
+   my->_is_locked = true;
 }
 
 /** decrypts and reloads all private keys using password */
@@ -145,33 +168,50 @@ void wallet::change_password( const std::string& old_password,
 
    // save it to a temporary location first, we don't want any
    // failures to cause us to lose the current wallet information.
-   save( my->_wallet_file + ".tmp", new_password );
+   save( my->_wallet_file.generic_string() + fc::string(".tmp"), new_password );
    // backup the old wallet, until we can be sure the new one is moved 
    // into place.
-   fc::rename( my->_wallet_file, my->my->_wallet_file + ".back" );
+   fc::rename( my->_wallet_file, my->_wallet_file.generic_string() + ".back" );
    // rename the tmp
-   fc::rename( my->_wallet_file+".tmp", my->my->_wallet_file );
+   fc::rename( my->_wallet_file.generic_string()+".tmp", my->_wallet_file );
    // remove the backup
-   fc::remove( my->my->_wallet_file + ".back" );
+   fc::remove( my->_wallet_file.generic_string() + ".back" );
 }
 
 /**
- *  Pre-generates num addresses.
+ *  Pre-generates num addresses and returns them.
  */
-void wallet::reserve( uint32_t num )
+std::vector<address> wallet::reserve( uint32_t num )
 {
    if( is_locked() )
    {
         FC_THROW_EXCEPTION( exception, 
                             "Wallet must be unlocked to add new private keys" );
    }
-   // TODO: should we force a 'save' after this?
+   if( num > 1000 )
+   {
+        FC_THROW_EXCEPTION( exception, "Attempt to reserve too-many private keys at once" );
+   }
+   my->_private_keys.reserve( my->_private_keys.size()+num );
+   std::vector<address> r(num);
+   for( uint32_t i = 0; i < num; ++i )
+   {
+      my->_private_keys.push_back( private_wallet_key::create() );
+      r[i] = my->_private_keys.back().addr;
+   }
+   return r;
 }
 
 
 std::vector<address>       wallet::get_addresses()const
 {
-
+   std::vector<address> r;
+   r.reserve( my->_private_keys.size() );
+   for( uint32_t i = 0; i < my->_private_keys.size(); ++i )
+   {
+      r.push_back( my->_private_keys[i].addr);
+   }
+   return r;
 }
 
 fc::ecc::compact_signature wallet::sign( const fc::sha256& digest, const address& a )
@@ -181,4 +221,10 @@ fc::ecc::compact_signature wallet::sign( const fc::sha256& digest, const address
         FC_THROW_EXCEPTION( exception, 
                             "Wallet must be unlocked to sign" );
    }
+   auto idx = my->_address_index.find(a);
+   if( idx == my->_address_index.end() )
+   {
+        FC_THROW_EXCEPTION( exception, "Unknown address ${addr}", ("addr",a) );
+   }
+   return my->_private_keys[idx->second].priv_key.sign_compact( digest );
 }

@@ -45,6 +45,7 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 set( sources 
      src/block_chain.cpp
      src/address.cpp
+     src/wallet.cpp
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )

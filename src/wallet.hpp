@@ -1,4 +1,11 @@
 #pragma once
+#include "address.hpp"
+#include <fc/filesystem.hpp>
+#include <fc/crypto/elliptic.hpp>
+#include <string>
+#include <vector>
+
+namespace detail { class wallet_impl; }
 
 /**
  *  Manages a set of public/private keys that belong
@@ -30,7 +37,7 @@ class wallet
       */
      void import( const fc::path& other_wallet, const std::string& password );
 
-     void load( const fc::path& walletdat = wallet_file() );
+     void load( const fc::path& walletdat, const std::string& password );
 
      /**
       *  Saves the wallet to the specified file encrypted with the given
@@ -57,9 +64,9 @@ class wallet
                            const std::string& new_password );
 
      /**
-      *  Pre-generates num addresses.
+      *  Pre-generates num addresses and returns them.
       */
-     void reserve( uint32_t num );
+     std::vector<address> reserve( uint32_t num );
 
      /**
       *  @note this information will not be available until after
