@@ -1,4 +1,7 @@
-bitshares
+bitshares - P2P Distributed Bank and Brokerage 
 =========
 
-P2P Distributed Broker 
+BitShares is a new blockchain that pays dividends and enables users
+to short and trade any arbitrary asset type.
+
+
