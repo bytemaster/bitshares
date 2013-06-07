@@ -52,6 +52,9 @@ add_library( bshare ${sources} )
 
 add_executable( pow_test tests/pow_test.cpp )
 target_link_libraries( pow_test bshare fc ${BOOST_LIBRARIES})
+
+add_executable( wallet_test tests/wallet_test.cpp )
+target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})
 #setup_library( bshare SOURCES ${sources} LIBRARY_TYPE STATIC )
 
 

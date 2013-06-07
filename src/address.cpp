@@ -12,7 +12,7 @@ address::address( const std::string& base58str )
 address::address( const fc::ecc::public_key& pub )
 {
     auto dat      = pub.serialize();
-    auto dat_hash = fc::sha256::hash( dat.data(), dat.size() );
+    auto dat_hash = fc::sha256::hash( dat.data, sizeof(dat) );
     ((char*)&dat_hash)[0] &= 0x1f; // set the first 4 bits to 0
     ((char*)&dat_hash)[0] |= 0x10; // set the first 4 bits to 0
     auto check = fc::sha256::hash( (char*)&dat_hash, 16 );
@@ -37,3 +37,14 @@ address::operator std::string()const
 }
 
 
+namespace fc 
+{ 
+   void to_variant( const ::address& var,  variant& vo )
+   {
+        vo = std::string(var);
+   }
+   void from_variant( const variant& var,  ::address& vo )
+   {
+        vo = ::address( var.as_string() );
+   }
+}

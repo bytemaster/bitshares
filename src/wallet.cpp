@@ -3,8 +3,10 @@
 #include <fc/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/blowfish.hpp>
+#include <fc/crypto/hex.hpp>
 #include <fc/io/fstream.hpp>
 #include <unordered_map>
+#include <assert.h>
 
 struct private_wallet_key
 {
@@ -25,10 +27,9 @@ FC_REFLECT( private_wallet_key, (addr)(pub_key)(priv_key) )
 struct wallet_format
 {
    uint32_t                         version;
-   fc::sha512                       checksum;
    std::vector<private_wallet_key>  private_keys;  // public/private keys
 };
-FC_REFLECT( wallet_format, (version)(checksum)(private_keys) )
+FC_REFLECT( wallet_format, (version)(private_keys) )
 
 namespace detail
 {
@@ -64,19 +65,23 @@ void wallet::load( const fc::path& walletdat, const std::string& password )
    {
        FC_THROW_EXCEPTION( file_not_found_exception, "Unable to wallet ${file}", ("file",walletdat) );
    }
-   fc::blowfish bf;
-   auto h = fc::sha256::hash( password.c_str(), password.size() );
-   bf.start( (unsigned char*)&h, sizeof(h) );
    
    std::vector<char> file_data( fc::file_size(walletdat) );
-   fc::ifstream in(walletdat, fc::ifstream::binary );
-   in.read( file_data.data(), file_data.size() );
-   bf.decrypt( (unsigned char*)file_data.data(), file_data.size() );
+   {
+      fc::ifstream in(walletdat, fc::ifstream::binary );
+      in.read( file_data.data(), file_data.size() );
+   }
+
+   auto h = fc::sha256::hash( password.c_str(), password.size() );
+   fc::blowfish bf;
+   bf.start( (unsigned char*)&h, sizeof(h) );
+   bf.decrypt( (unsigned char*)file_data.data(), file_data.size(), fc::blowfish::CBC );
    
-   auto check = fc::sha512::hash( file_data.data()+4+sizeof(fc::sha512), 
-                                  file_data.size()-4-sizeof(fc::sha512) );
+   auto check = fc::sha512::hash( file_data.data(), 
+                                  file_data.size()-32 );
    
-   if( memcmp( (char*)&check, file_data.data()+4, sizeof(check) ) != 0 )
+   // last 32 bytes should match first 32 from sha512
+   if( memcmp( (char*)&check, file_data.data() + file_data.size()-32, 32 ) != 0 )
    {
       FC_THROW_EXCEPTION( exception, "Error decrypting wallet" );
    }
@@ -106,27 +111,29 @@ void wallet::save( const fc::path& walletdat, const std::string& password )
                                      "no private keys are currently loaded" );
     }
 
-    if( !fc::exists( walletdat.parent_path() ) )
+    if( !fc::exists( fc::absolute(walletdat).parent_path() ) )
     {
       FC_THROW_EXCEPTION( file_not_found_exception, 
                           "Invalid directory ${dir}", 
                           ("dir",walletdat.parent_path() ) );
     }
 
-    fc::sha512::encoder enc;
-    fc::raw::pack( enc, my->_private_keys );
 
     wallet_format wf;
     wf.version      = 0;
-    wf.checksum     = enc.result();
     wf.private_keys = my->_private_keys;
 
     auto vec = fc::raw::pack( wf );
+    vec.resize( vec.size() + 8 -  vec.size()%8); // trim the padding...
+
+    auto r = fc::sha512::hash( vec.data(), vec.size() );
+    vec.resize( vec.size() + 32 );
+    memcpy( vec.data() + vec.size() - 32, (char*)&r, 32 );
     
     fc::blowfish bf;
     auto h = fc::sha256::hash( password.c_str(), password.size() );
     bf.start( (unsigned char*)&h, sizeof(h) );
-    bf.encrypt( (unsigned char*)vec.data(), vec.size() );
+    bf.encrypt( (unsigned char*)vec.data(), vec.size(), fc::blowfish::CBC );
 
     fc::ofstream o( walletdat );
     o.write( vec.data(), vec.size() );
