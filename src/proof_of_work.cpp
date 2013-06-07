@@ -3,6 +3,9 @@
 #include <fc/crypto/blowfish.hpp>
 #include <string.h>
 
+#include <fc/io/raw.hpp>
+#include "blockchain.hpp"
+
 #define MB128 (128*1024*1024)
 
 /**
@@ -15,6 +18,8 @@
  */
 fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 {
+   return fc::sha1::hash( (char*)&in, sizeof(in) ); // for dev purposes only
+
    memset( buffer_128m, 0, MB128 );
    fc::blowfish bf; 
    bf.start( (unsigned char*)&in, sizeof(in) );
@@ -55,4 +60,10 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
    return fc::sha1::hash( (char*)buffer_128m, MB128 );
 }
 
+
+fc::sha1 proof_of_work( const block_header& h, unsigned char* buffer_128m )
+{
+    auto data = fc::raw::pack(h);
+    return proof_of_work( fc::sha256::hash( data.data(), data.size() ), buffer_128m );
+}
 

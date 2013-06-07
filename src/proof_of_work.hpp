@@ -11,3 +11,11 @@
  *  @return processed hash after doing proof of work.
  */
 fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m );
+
+class block_header;
+
+/**
+ *  Calculates the sha256 of the block_header, then calls proof_of_work with
+ *  the result.
+ */
+fc::sha1 proof_of_work( const block_header& h, unsigned char* buffer_128m );

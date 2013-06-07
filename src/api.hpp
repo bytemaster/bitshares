@@ -63,6 +63,8 @@ class block_chain
       const block&            get_unconfirmed_head();
 
       block                   generate_next_block( const address& a );
+      void                    generate_gensis_block();
+
 
       /**
        *  Returns all balances for a particular address based upon confirmation status.

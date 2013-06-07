@@ -1,5 +1,6 @@
 #pragma once
 #include "blockchain.hpp"
+#include <fc/crypto/sha1.hpp>
 
 /**
  *  Tracks information / state about a transactions.
@@ -27,12 +28,13 @@ class meta_output_cache
 
 FC_REFLECT( meta_output_cache, (out)(block_num) )
 
-class blockheader_meta
+class meta_block_header
 {
   public:
-    fc::sha1                id; // cached because it is expensive to calculate 
+    fc::sha1                id;               // cached because it is expensive to calculate 
+    fc::string              error_message;
     block_header            header;
-    std::vector<fc::sha256> next_blocks;
+    std::vector<pow_hash>   next_blocks;
 };
 
-FC_REFLECT( blockheader_meta, (header)(next_blocks) )
+FC_REFLECT( meta_block_header, (id)(error_message)(header)(next_blocks) )

@@ -1,5 +1,6 @@
 #pragma once
 #include <fc/crypto/sha256.hpp>
+#include <fc/crypto/sha1.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/raw.hpp>
@@ -17,6 +18,13 @@
  * without respect to any caching or meta-data.  These structs effectively
  * define the serialization of the block-chain.
  */
+
+/**
+ *  The proof-of-work hash is 160 bits, just like sha1 but it is 
+ *  ultimately *NOT* a sha1 hash and thus not subject to the
+ *  same attacks as sha1
+ */
+typedef fc::sha1 pow_hash;
 
 
 /**
@@ -48,7 +56,7 @@ struct block_header
    fc::time_point             timestamp;     // UTC seconds, must always increase from one block to the next, blocks are rejected if timestamp is more than 5 minutes in the future.
    uint32_t                   height;        // position in the block chain... 
    uint64_t                   nonce;         // expensive to check, proof of work 
-   fc::sha256                 prev_block;    // hash of previous block.
+   pow_hash                   prev_block;    // hash of previous block.
    fc::sha256                 block_state;   // used to 'capture' the status of the block after procesing trx
    uint64_t                   dividends;     // total dividends paid for this block (BitShares)
    std::vector<share_state>   share_changes; // required to calculate dividends paid over time.     
