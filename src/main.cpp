@@ -29,8 +29,15 @@ int main( int argc, char** argv )
          fc::cerr<<"Usage: "<<argv[0]<<" config\n";
          return -1;
       }
-
-      auto cfg = fc::json::from_file( fc::path( argv[1] ) ).as<bitshare_config>();
+      bitshare_config cfg;
+      try {
+        cfg = fc::json::from_file( fc::path( argv[1] ) ).as<bitshare_config>();
+      } 
+      catch( fc::eof_exception& e )
+      {
+        fc::cerr<<"Error loading configuration\n"<<e.to_detail_string()<<"\n";
+        return -1;
+      }
       
       // load the block-chain
       block_chain bc;
@@ -61,9 +68,21 @@ int main( int argc, char** argv )
           if( cmd == "help" )
           {
              fc::cout<<"Commands:\n";
+             fc::cout<<"add_block\n";
              fc::cout<<"mine effort\n";
              fc::cout<<"list_block_headers [START] [END]\n";
              fc::cout.flush();
+          }
+          else if( cmd == "add_block" )
+          {
+             auto coinbase_addr  = default_acnt.get_new_address();
+             block  new_block             = bc.generate_next_block( coinbase_addr );
+
+             fc::cout<<"Creating new block:\n"<< fc::json::to_pretty_string(new_block) <<"\n";
+
+             bc.add_block( new_block );
+
+            // adds the next block without mining...
           }
           else if( cmd == "mine" )
           {
@@ -80,6 +99,7 @@ int main( int argc, char** argv )
    } 
    catch ( fc::eof_exception& e )
    {
+        fc::cerr<<"eof\n";
         // expected end of cin..
         return 0;
    }

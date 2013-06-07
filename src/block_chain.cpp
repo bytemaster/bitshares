@@ -44,7 +44,7 @@ block  block_chain::generate_next_block( const address& a )
    b.header.timestamp             = fc::time_point::now();
    b.header.height                = my->_chain.size();
    b.header.nonce                 = 0;
-//   b.difficulty            = current_difficulty();
+   b.header.dividends             = 0;
 
    // apply all non-market transactions
 
@@ -68,6 +68,11 @@ block  block_chain::generate_next_block( const address& a )
    return b;
 }
 
+void  block_chain::add_block( const block& b )
+{
+  my->_chain.push_back(b.header);  // TODO... something smarter
+}
+
 uint64_t block_chain::current_difficulty()
 {
   // calculate the average time for the past 120 blocks
@@ -82,10 +87,13 @@ int64_t  block_chain::get_reward_for_height( int64_t h )
    int64_t reward = INIT_BLOCK_REWARD * SHARE;
    do
    {
-      int num  = h > REWARD_ADJUSTMENT_INTERVAL ? REWARD_ADJUSTMENT_INTERVAL : h;
-      reward -= num * (reward/2/REWARD_ADJUSTMENT_INTERVAL);
+      ilog( "height: ${h}  ${reward}", ("h", h)("reward",reward) );
+         int num  = h > REWARD_ADJUSTMENT_INTERVAL ? REWARD_ADJUSTMENT_INTERVAL : h;
+         reward -= num * (reward/2/REWARD_ADJUSTMENT_INTERVAL);
+      ilog( "height: ${h}  ${reward}", ("h", h)("reward",reward) );
       h -= REWARD_ADJUSTMENT_INTERVAL;
    } while( h > 0 );
+  ilog( "height: ${h}  ${reward}", ("h", h)("reward",reward) );
 
    return reward;
 }

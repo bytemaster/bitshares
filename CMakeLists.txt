@@ -29,9 +29,8 @@ ELSE(WIN32)
 ENDIF(WIN32)
 
 
-
-#set(Boost_USE_STATIC_LIBS ON)
-#find_package(Boost 1.51 COMPONENTS thread date_time system filesystem program_options signals serialization chrono unit_test_framework context ) 
+set(Boost_USE_STATIC_LIBS ON)
+FIND_PACKAGE(Boost 1.51 COMPONENTS thread date_time system filesystem program_options signals serialization chrono unit_test_framework context ) 
 
 include_directories( ${CMAKE_SOURCE_DIR}/fc/include )
 include_directories( ${CMAKE_SOURCE_DIR}/fc/vendor/boost_1.51/include )

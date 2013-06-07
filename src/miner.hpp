@@ -20,7 +20,8 @@ class miner
        void stop();
 
     private:
-       fc::thread _mining_thread;
-       account&   _mining_account;
-       float      _effort;
+       fc::thread     _mining_thread;
+       block_chain&   _block_chain;
+       account&       _mining_account;
+       float          _effort;
 };

@@ -26,3 +26,13 @@ class meta_output_cache
 };
 
 FC_REFLECT( meta_output_cache, (out)(block_num) )
+
+class blockheader_meta
+{
+  public:
+    fc::sha1                id; // cached because it is expensive to calculate 
+    block_header            header;
+    std::vector<fc::sha256> next_blocks;
+};
+
+FC_REFLECT( blockheader_meta, (header)(next_blocks) )
