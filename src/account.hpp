@@ -1,4 +1,11 @@
 #pragma once
+#include "address.hpp"
+#include "blockchain.hpp"
+#include "wallet.hpp"
+#include <vector>
+#include <memory>
+
+namespace detail { class account_impl; }
 
 /**
  *  An account is a set of addresses and the
@@ -30,24 +37,24 @@ class account
      account();
      ~account();
 
+     enum open_mode
+     {
+          create, read_only, read_write
+     };
+
      /** returns the wallet for this account so
       * that it may be used to sign transactions that
       * spend from this account.
       */
      wallet&                           get_wallet();
+     wallet&                           load_wallet( const std::string& pass );
+     void                              save_wallet( const std::string& pass );
 
-     // returns all 'positive' balances by unit with the specified
-     // number of confirmations.  This calculation only factors in
-     // the cached outputs and transactions.
-     std::map<unit,int64_t>            get_balances( uint64_t confirm = 0 );
-
-     // TODO: returns all short positions.
+     void                              load( const fc::path& account_dir, open_mode m = create );
+     void                              save();
 
      void                              set_name( const std::string& name );
      std::string                       name()const;
-                                       
-     void                              load( const fc::path& account_file );
-     void                              save( const fc::path& account_file );
                                        
      void                              add_address( const address& a );
 
@@ -56,27 +63,12 @@ class account
       **/
      address                           get_new_address();
 
-     /**
-      *  Removes all cached outputs and transactions because they
-      *  may no longer be valid and the block-chain needs to be
-      *  re-indexed in order to calculate a valid balance.
-      */
-     void                              clear_output_and_transaction_cache();
-
-     /** used to load the initial condition, starting balance */
-     void                              add_output( const trx_output& o );
-
-     /** used to update the balance based upon the transaction history */
-     void                              add_transaction( const transaction& trx );
-     bool                              contains_address( const address& a );
-     const std::vector<transaction>&   get_transactions()const;
-
      /** Gets all addresses associated with this account regardless
       *  of whether or not we have the private key
       */
-     std::vector<address>              get_addresses();
+     std::vector<address>              get_addresses()const;
   private:
-     std::unique_ptr<detail::wallet> my;
+     std::unique_ptr<detail::account_impl> my;
 };
 
 

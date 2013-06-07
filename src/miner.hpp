@@ -2,6 +2,8 @@
 #include "api.hpp"
 #include <fc/thread/thread.hpp>
 
+class account;
+
 
 /**
  *  The miner will monitor the block chain for changes and
@@ -11,12 +13,14 @@
 class miner
 {
     public:
-       miner( block_chain& bc );
+       miner( block_chain& bc, account& a );
        ~miner();
 
        void start( float effort = 1);
        void stop();
 
     private:
-       fc::thread mining_thread;
+       fc::thread _mining_thread;
+       account&   _mining_account;
+       float      _effort;
 };

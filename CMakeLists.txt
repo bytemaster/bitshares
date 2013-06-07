@@ -46,6 +46,8 @@ set( sources
      src/block_chain.cpp
      src/address.cpp
      src/wallet.cpp
+     src/account.cpp
+     src/miner.cpp
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )
