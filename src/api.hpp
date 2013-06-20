@@ -11,13 +11,8 @@ namespace detail
     class block_chain_impl;
 }
 
-struct exchange_state
-{
-    unit      sell_unit;
-    unit      buy_unit; 
-    int64_t   buy_price; // number of buy_unit to buy 1 sell_unit
-};
-FC_REFLECT( exchange_state, (sell_unit)(buy_unit)(buy_price) )
+
+class meta_output_cache;
 
 /**
  *  @class block_chain
@@ -31,10 +26,24 @@ class block_chain
       ~block_chain();
 
       /**
-       *  Emitted any-time the block chain changes due to a new
+       *  Emitted anytime the block chain changes due to a new
        *  block or transaction.  Changes include the head 'unconfirmed' block.
        */
-      fc::signal<void()>      changed;
+      fc::signal<void()>                    changed;
+
+      /**
+       *  Emitted anytime the a new output is added to the chain state.
+       *  Accounts can 'observe' these changes to  update their balances.
+       */
+      fc::signal<void(const output_cache&)> output_added;
+
+      /**
+       *  Emitted anytime an output is 'spent' or otherwise removed from
+       *  the chain state.  Accounts can 'observe' these changes to 
+       *  update their balances.
+       */
+      fc::signal<void(const output_cache&)> output_removed;
+      std::vector<output_cache> get_outputs_for_address( const address& a )const;
 
       void                    load( const fc::path& data_dir );
 
@@ -62,9 +71,19 @@ class block_chain
        */
       const block&            get_unconfirmed_head();
 
+      block                   get_block( const pow_hash& h );
       block                   generate_next_block( const address& a );
       void                    generate_gensis_block();
 
+      /**
+       *  @return a human-readable, well-formated view of the transaction.
+       */
+      std::string             pretty_print_transaction( const signed_transaction& trx );
+      std::string             pretty_print_output( const trx_output& out );
+      std::string             pretty_print_output( const output_cache& out );
+      std::string             pretty_print_output( const fc::sha224& out );
+      std::string             pretty_print_block( const pow_hash& block_id );
+      void                    pretty_print_chain();
 
       /**
        *  Returns all balances for a particular address based upon confirmation status.

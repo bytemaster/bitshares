@@ -2,8 +2,10 @@
 #include "address.hpp"
 #include "blockchain.hpp"
 #include "wallet.hpp"
+#include "meta.hpp"
 #include <vector>
 #include <memory>
+#include <unordered_set>
 
 namespace detail { class account_impl; }
 
@@ -66,7 +68,11 @@ class account
      /** Gets all addresses associated with this account regardless
       *  of whether or not we have the private key
       */
-     std::vector<address>              get_addresses()const;
+     const std::unordered_set<address>& get_addresses()const;
+
+     /** helper method for searching get_addresses() for addr */
+     bool contains( const address& addr );
+
   private:
      std::unique_ptr<detail::account_impl> my;
 };

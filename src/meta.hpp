@@ -1,5 +1,12 @@
 #pragma once
+/**
+ *  @file meta.hpp
+ *
+ *  Defines extra 'index' information about transactions, outputs, and blocks.  This
+ *  information is not included in the blockchain but is kept in the local database.
+ */
 #include "blockchain.hpp"
+#include "chain_state.hpp"
 #include <fc/crypto/sha1.hpp>
 
 /**
@@ -22,19 +29,24 @@ class meta_output_cache
 {
    public:
       output_cache out;
-      bool         spent;
-      int32_t      block_num; ///< non 0 if included in a block
+      int32_t      block_num;    ///< non 0 if included in a block
+      fc::sha224   trx_id;       /// the ID of the transaction this output was part of
+      fc::sha224   spent_trx_id; /// trx that spent this output
 };
 
-FC_REFLECT( meta_output_cache, (out)(block_num) )
+FC_REFLECT( meta_output_cache, (out)(block_num)(trx_id)(spent_trx_id) )
 
 class meta_block_header
 {
   public:
-    fc::sha1                id;               // cached because it is expensive to calculate 
-    fc::string              error_message;
-    block_header            header;
-    std::vector<pow_hash>   next_blocks;
+    fc::sha1                  id;               // cached because it is expensive to calculate 
+    fc::string                error_message;
+    block_header              header;
+    chain_state::change_set   undo_data;        // everything necessary to 'undo' state changes
+    std::vector<pow_hash>     next_blocks;
 };
 
 FC_REFLECT( meta_block_header, (id)(error_message)(header)(next_blocks) )
+
+
+

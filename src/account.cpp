@@ -6,6 +6,7 @@
 #include <fc/filesystem.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
+#include <unordered_set>
 
 /**
  *  Caches all transactions that contain an input
@@ -16,9 +17,7 @@ struct account_file
 {
    fc::string                      name;
    std::vector<address>            free_addresses;
-   std::vector<address>            used_addresses;
-   //std::vector<meta_transaction>   transactions;
-   //std::vector<meta_output_cache>  outputs;
+   std::unordered_set<address>     used_addresses;
 };
 
 FC_REFLECT( account_file, (name)(free_addresses)(used_addresses) )
@@ -111,8 +110,7 @@ void account::save_wallet( const std::string& pass )
 
 void account::add_address( const address& a )
 {
-    // TODO make address unique
-    my->_account.used_addresses.push_back(a);
+    my->_account.used_addresses.insert(a);
 }
 
 address account::get_new_address()
@@ -128,15 +126,19 @@ address account::get_new_address()
          FC_THROW_EXCEPTION( exception, "no addresses available and the wallet is locked" );
       }
    }
-   my->_account.used_addresses.push_back( my->_account.free_addresses.back() );
+   auto naddr = my->_account.free_addresses.back();
+   my->_account.used_addresses.insert( naddr );
    my->_account.free_addresses.pop_back();
-   return my->_account.used_addresses.back();
+   return naddr;
 }
 
-std::vector<address> account::get_addresses()const
+const std::unordered_set<address>& account::get_addresses()const
 {
     return my->_account.used_addresses;
 }
 
-
+bool account::contains( const address& addr ) 
+{
+  return my->_account.used_addresses.find(addr) != my->_account.used_addresses.end();
+}
 

@@ -41,12 +41,16 @@ include_directories( ${Boost_INCLUDE_DIR} )
 add_subdirectory( fc )
 set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_DATE_TIME_LIBRARY} ${Boost_CHRONO_LIBRARY} ${ALL_OPENSSL_LIBRARIES})
 
+
 set( sources 
-     src/block_chain.cpp
+#     src/database.cpp
+#     src/block_chain.cpp
      src/address.cpp
      src/wallet.cpp
-     src/account.cpp
-     src/miner.cpp
+#     src/account.cpp
+#     src/miner.cpp
+#     src/chain_state.cpp
+     vendor/cityhash-1.0.3/src/city.cc
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )
@@ -58,6 +62,8 @@ add_executable( wallet_test tests/wallet_test.cpp )
 target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})
 #setup_library( bshare SOURCES ${sources} LIBRARY_TYPE STATIC )
 
+#add_executable( unit_tests tests/unit_tests.cpp )
+#target_link_libraries( unit_tests bshare fc ${BOOST_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}  )
 
-add_executable( bitshares src/main.cpp )
-target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})
+#add_executable( bitshares src/main.cpp )
+#target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})

@@ -1,4 +1,4 @@
-#include "api.hpp"
+//#include "api.hpp"
 #include "miner.hpp"
 #include "account.hpp"
 #include "wallet.hpp"
@@ -14,11 +14,35 @@ struct bitshare_config
    float       mine_effort;
 
 };
-
 FC_REFLECT( bitshare_config, 
             (data_dir)
             (mine_effort) 
           ) 
+
+/**
+ *  Prints out the account with balances and available outputs,
+ *  dividends, etc.
+ */
+void print_account( account& a, block_chain& bc )
+{
+     auto  addrs    = a.get_addresses();
+     std::vector<output_cache> outs;
+     std::cout<<" Account: '"<<a.name()<<"'\n";
+     std::cout<<"----------------------------------------------------------------\n";
+     std::cout<<" Addresses: \n";
+     for( auto itr = addrs.begin(); itr != addrs.end(); ++itr )
+     {
+        std::cout<<"   "<<std::string(*itr)<<"\n"; // TODO: print whether or not we have the private key
+        auto ve = bc.get_outputs_for_address( *itr );
+        outs.insert( outs.end(), ve.begin(), ve.end() );
+     }
+
+     std::cout<<" Outputs: \n";
+     for( auto itr = outs.begin(); itr != outs.end(); ++itr )
+     {
+        std::cout<<"     "<< bc.pretty_print_output( *itr ) <<"\n";
+     }
+}
 
 int main( int argc, char** argv )
 {
@@ -47,6 +71,9 @@ int main( int argc, char** argv )
       account default_acnt;
       default_acnt.load( cfg.data_dir / "accounts" / "default", account::create );
 
+      //bc.output_added.connect( [&]( const output_cache& o ) { default_acnt.add_output(o); } );
+      //bc.output_removed.connect( [&]( const output_cache& o ) { default_acnt.remove_output(o); } );
+
       // start the miner
       miner bc_miner( bc, default_acnt );
       bc_miner.start( cfg.mine_effort );
@@ -70,13 +97,14 @@ int main( int argc, char** argv )
              fc::cout<<"Commands:\n";
              fc::cout<<"add_block\n";
              fc::cout<<"mine effort\n";
-             fc::cout<<"list_block_headers [START] [END]\n";
+             fc::cout<<"print_chain\n";
+             fc::cout<<"print_account\n";
              fc::cout.flush();
           }
           else if( cmd == "add_block" )
           {
              auto coinbase_addr  = default_acnt.get_new_address();
-             block  new_block             = bc.generate_next_block( coinbase_addr );
+             block  new_block    = bc.generate_next_block( coinbase_addr );
 
              fc::cout<<"Creating new block:\n"<< fc::json::to_pretty_string(new_block) <<"\n";
 
@@ -90,9 +118,13 @@ int main( int argc, char** argv )
               ss >> effort;
               bc_miner.start( effort );
           }
-          else if( cmd == "list_block_headers" )
+          else if( cmd == "print_chain" )
           {
-
+              bc.pretty_print_chain();
+          }
+          else if( cmd == "print_account" )
+          {
+              print_account(default_acnt, bc);
           }
           fc::getline( fc::cin, line );
       }
