@@ -95,7 +95,9 @@ struct trx_output_by_address : public trx_output
 FC_REFLECT_DERIVED( trx_output_by_address, (trx_output), (claim_address) )
 
 
-
+/**
+ *  Holds any type of transaction input in the data field.
+ */
 struct generic_trx_in
 {
   uint8_t           in_type;
@@ -110,7 +112,9 @@ struct generic_trx_out
 };
 FC_REFLECT( generic_trx_out, (out_type)(data) )
 
-
+/**
+ *  @brief maps inputs to outputs.
+ */
 struct transaction
 {
    uint16_t                     version;
