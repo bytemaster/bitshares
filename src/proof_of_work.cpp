@@ -84,15 +84,14 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
    }
 
    uint64_t* buf = (uint64_t*)buffer_128m;
-   uint64_t* end = (uint64_t*)(buffer_128m+MB128);
-   uint64_t  s = end - buf;
+   const uint64_t  s = MB128/sizeof(uint64_t);
    uint64_t data = end[-1];
    for( uint32_t x = 0; x < 128; ++x )
    {
       uint64_t d = data%s;
       uint64_t tmp = data ^ buf[d];
       std::swap( buf[tmp%s], buf[d] );
-      data = tmp;
+      data = tmp * (x+17);
    }
    // require full 128 MB to complete sequential step
    auto     out  = CityHashCrc128( (char*)buffer_128m, MB128 ); 
