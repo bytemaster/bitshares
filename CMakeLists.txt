@@ -46,7 +46,7 @@ set( sources
 #     src/database.cpp
 #     src/block_chain.cpp
      src/address.cpp
-     src/wallet.cpp
+ #    src/wallet.cpp
 #     src/account.cpp
 #     src/miner.cpp
 #     src/chain_state.cpp

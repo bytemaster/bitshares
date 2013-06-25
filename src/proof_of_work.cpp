@@ -94,8 +94,6 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
       std::swap( buf[tmp%s], buf[d] );
       data = tmp;
    }
-   auto tail = CityHashCrc128( (char*)buffer_128m + MB128 - MB128/128, MB128/128 ); 
-   memcpy( buffer_128m, 
    // require full 128 MB to complete sequential step
    auto     out  = CityHashCrc128( (char*)buffer_128m, MB128 ); 
    return fc::sha1::hash( (char*)&out, sizeof(out) );
