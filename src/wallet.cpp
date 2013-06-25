@@ -37,7 +37,7 @@ namespace detail
   {
      public:
         bool                             _is_locked;
-        fc::path                         _wallet_file;   // file where wallet is stored.
+        fc::sha512                       _master_key;
         std::vector<address>             _addresses;     // all used addresses
         std::vector<private_wallet_key>  _private_keys;  // public/private keys
         std::unordered_map<address,int>  _address_index; // maps to index in private_keys
@@ -59,48 +59,9 @@ fc::path wallet::wallet_file()const
   return my->_wallet_file; 
 }
 
-void wallet::load( const fc::path& walletdat, const std::string& password )
-{
-   if( !fc::exists( walletdat ) ) 
-   {
-       FC_THROW_EXCEPTION( file_not_found_exception, "Unable to wallet ${file}", ("file",walletdat) );
-   }
-   
-   std::vector<char> file_data( fc::file_size(walletdat) );
-   {
-      fc::ifstream in(walletdat, fc::ifstream::binary );
-      in.read( file_data.data(), file_data.size() );
-   }
 
-   auto h = fc::sha256::hash( password.c_str(), password.size() );
-   fc::blowfish bf;
-   bf.start( (unsigned char*)&h, sizeof(h) );
-   bf.decrypt( (unsigned char*)file_data.data(), file_data.size(), fc::blowfish::CBC );
-   
-   auto check = fc::sha512::hash( file_data.data(), 
-                                  file_data.size()-32 );
-   
-   // last 32 bytes should match first 32 from sha512
-   if( memcmp( (char*)&check, file_data.data() + file_data.size()-32, 32 ) != 0 )
-   {
-      FC_THROW_EXCEPTION( exception, "Error decrypting wallet" );
-   }
-   
-   my->_private_keys = fc::raw::unpack<wallet_format>( file_data ).private_keys;
-   
-   my->_wallet_file = walletdat;
-   my->_is_locked   = false;
-
-   my->_address_index.clear();
-   
-   // index the keys
-   for( uint32_t i = 0; i < my->_private_keys.size(); ++i )
-   {
-      my->_address_index[my->_private_keys[i].addr] = i;
-   }
-
-   // TODO: should we perform a sanity check on the addresses?
-}
+   pow_hash h = proof_of_work( fc::sha256::hash( password.c_str(), password.size() ) );
+   my->_master_secret = fc::sha512::hash( (char*)&h,sizeof(h) );
 
 
 void wallet::save( const fc::path& walletdat, const std::string& password )

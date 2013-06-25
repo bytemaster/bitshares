@@ -57,11 +57,6 @@ class wallet
       */
      void unlock( const std::string& password );
 
-     /**
-      *  Unlocks the wallet and then saves it with the new password.
-      */
-     void change_password( const std::string& old_password, 
-                           const std::string& new_password );
 
      /**
       *  Pre-generates num addresses and returns them.
