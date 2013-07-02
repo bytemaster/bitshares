@@ -600,7 +600,14 @@ static const uint32_t crc_c[256] = {
          0x79B737BA, 0x8BDCB4B9, 0x988C474D, 0x6AE7C44E,
          0xBE2DA0A5, 0x4C4623A6, 0x5F16D052, 0xAD7D5351,
  };
-#ifdef __SSE4_2__
+#ifndef __SSE4_2__
+
+
+uint64_t _mm_crc32_u64(uint64_t a, uint64_t b )
+{
+    return crc32cSlicingBy8(a, (unsigned char*)&b, sizeof(b)); 
+}
+/*
 //#include "citycrc.h"
 #include <nmmintrin.h>
 #include <iostream>
@@ -614,5 +621,6 @@ int main( int argc, char** argv )
     std::cout<<std::hex<<f1<<"\n"<<f2<<"\n"<<f3<<"\n"<<f4<<"\n";
     return 0;
 }
+*/
 
 #endif
