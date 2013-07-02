@@ -28,7 +28,7 @@
 // compromising on hash quality.
 
 //#include "config.h"
-#include <city.h>
+#include "city.h"
 
 #include <algorithm>
 #include <string.h>  // for memcpy and memset
@@ -352,9 +352,9 @@ uint128 CityHash128(const char *s, size_t len) {
   }
 }
 
-#ifdef __SSE4_2__
+//#ifdef __SSE4_2__
 #include "citycrc.h"
-#include <nmmintrin.h>
+//#include <nmmintrin.h>
 
 // Requires len >= 240.
 static void CityHashCrc256Long(const char *s, size_t len,
@@ -464,4 +464,4 @@ uint128 CityHashCrc128(const char *s, size_t len) {
   }
 }
 
-#endif
+//#endif

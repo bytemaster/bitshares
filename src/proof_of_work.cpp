@@ -6,7 +6,7 @@
 #include <city.h>
 
 #include <fc/io/raw.hpp>
-#include "blockchain.hpp"
+//#include "blockchain.hpp"
 #include <utility>
 #include <boost/random/mersenne_twister.hpp>
 
@@ -85,6 +85,7 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 
    uint64_t* buf = (uint64_t*)buffer_128m;
    const uint64_t  s = MB128/sizeof(uint64_t);
+   uint64_t* end = buf + s;//(uint64_t*)buffer_128m;
    uint64_t data = end[-1];
    for( uint32_t x = 0; x < 128; ++x )
    {
@@ -99,9 +100,11 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 }
 
 
+/*
 fc::sha1 proof_of_work( const block_header& h, unsigned char* buffer_128m )
 {
     auto data = fc::raw::pack(h);
     return proof_of_work( fc::sha256::hash( data.data(), data.size() ), buffer_128m );
 }
 
+*/
