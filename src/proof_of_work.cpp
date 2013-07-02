@@ -6,7 +6,7 @@
 #include <city.h>
 
 #include <fc/io/raw.hpp>
-#include "blockchain.hpp"
+//#include "blockchain.hpp"
 #include <utility>
 #include <boost/random/mersenne_twister.hpp>
 
@@ -99,9 +99,11 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 }
 
 
+/*
 fc::sha1 proof_of_work( const block_header& h, unsigned char* buffer_128m )
 {
     auto data = fc::raw::pack(h);
     return proof_of_work( fc::sha256::hash( data.data(), data.size() ), buffer_128m );
 }
 
+*/

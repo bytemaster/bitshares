@@ -25,7 +25,8 @@ IF( WIN32 )
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")    
 	ENDIF()
 ELSE(WIN32)
-   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3 -msse4.2" )
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3 -msse4.2" )
+#   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3 " )
 ENDIF(WIN32)
 
 
@@ -33,7 +34,9 @@ set(Boost_USE_STATIC_LIBS ON)
 FIND_PACKAGE(Boost 1.51 COMPONENTS thread date_time system filesystem program_options signals serialization chrono unit_test_framework context ) 
 
 include_directories( ${CMAKE_SOURCE_DIR}/fc/include )
+include_directories( ${CMAKE_SOURCE_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/fc/vendor/boost_1.51/include )
+include_directories( ${CMAKE_SOURCE_DIR}/vendor/cityhash-1.0.3/src )
 include_directories( ${Boost_INCLUDE_DIR} )
    
 #link_directories( ${Boost_LIBRARY_DIRS} )
@@ -46,11 +49,12 @@ set( sources
 #     src/database.cpp
 #     src/block_chain.cpp
      src/address.cpp
- #    src/wallet.cpp
+#    src/wallet.cpp
 #     src/account.cpp
 #     src/miner.cpp
 #     src/chain_state.cpp
      vendor/cityhash-1.0.3/src/city.cc
+     vendor/cityhash-1.0.3/src/crc.cpp
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )
@@ -61,8 +65,8 @@ target_link_libraries( ecc_test bshare fc ${BOOST_LIBRARIES})
 add_executable( pow_test tests/pow_test.cpp )
 target_link_libraries( pow_test bshare fc ${BOOST_LIBRARIES})
 
-add_executable( wallet_test tests/wallet_test.cpp )
-target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})
+#add_executable( wallet_test tests/wallet_test.cpp )
+#target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})
 #setup_library( bshare SOURCES ${sources} LIBRARY_TYPE STATIC )
 
 #add_executable( unit_tests tests/unit_tests.cpp )

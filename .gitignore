@@ -11,3 +11,14 @@
 *.lai
 *.la
 *.a
+
+CMakeCache.txt
+Makefile
+CMakeFiles
+cmake_install.cmake
+ecc_test
+pow_test
+unit_tests
+wallet_test
+libbshare.a
+

@@ -1,6 +1,6 @@
 #pragma once
 #include "units.hpp"
-#include "address.hpp"
+#include <bts/address.hpp>
 #include "proof_of_work.hpp"
 #include "transaction.hpp"
 #include <fc/crypto/elliptic.hpp>
