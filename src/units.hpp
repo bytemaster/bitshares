@@ -1,6 +1,9 @@
 #pragma once
 #include <fc/reflect/reflect.hpp>
 
+namespace bts 
+{
+
 /**
  *  All balanes are annotated with a unit, each BitShare 
  *  chain supports 8 basic units
@@ -35,6 +38,8 @@ struct bond_type
    unit_type  issue_type;
    unit_type  backing_type;
 };
+
+} // namespace bts
 
 FC_REFLECT( bond_type, (issue_type)(backing_type) )
 

@@ -55,6 +55,9 @@ set( sources
 
 add_library( bshare ${sources} )
 
+add_executable( ecc_test tests/ecc_test.cpp )
+target_link_libraries( ecc_test bshare fc ${BOOST_LIBRARIES})
+
 add_executable( pow_test tests/pow_test.cpp )
 target_link_libraries( pow_test bshare fc ${BOOST_LIBRARIES})
 

@@ -85,7 +85,7 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 
    uint64_t* buf = (uint64_t*)buffer_128m;
    const uint64_t  s = MB128/sizeof(uint64_t);
-   uint64_t data = end[-1];
+   uint64_t data = (buf+s)[-1];
    for( uint32_t x = 0; x < 128; ++x )
    {
       uint64_t d = data%s;

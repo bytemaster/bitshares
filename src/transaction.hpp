@@ -6,11 +6,13 @@
 #include <fc/crypto/sha224.hpp>
 #include <fc/io/varint.hpp>
 
-
+/**
+ *  A reference to a transaction and output index.
+ */
 struct output_reference
 {
   fc::sha224        trx_hash;   // the hash of a transaction.
-  fc::unsigned_int  output_idx; // the output index in the transaction trx_hash
+  uint8_t           output_idx; // the output index in the transaction trx_hash
 };
 FC_REFLECT( output_reference, (trx_hash)(output_idx) )
 
@@ -42,11 +44,8 @@ FC_REFLECT_ENUM( claim_type, (claim_by_address) )
  */
 struct trx_input
 {
-    /** 0 for output index, 1 for output ref */
-    uint8_t                          output_flags;
-    fc::optional<uint64_t>           output_index;
-    fc::optional<output_reference>   output_ref;
-    claim_type                       output_type;
+    output_reference   output_ref;
+    claim_type         output_type;
 };
 FC_REFLECT( trx_input, (output_flags)(output_index)(output_ref) )
 

@@ -4,7 +4,7 @@
 address::address(){}
 address::address( const std::string& base58str )
 {
-   fc::vector<char> v = from_base58( fc::string(base58str) );
+   std::vector<char> v = fc::from_base58( base58str );
    if( v.size() )
       memcpy( addr.data, v.data(), std::min<size_t>( v.size(), sizeof(addr) ) );
 }
