@@ -1,4 +1,4 @@
-#include "../src/proof_of_work.hpp"
+#include <bts/proof_of_work.hpp>
 #include <string.h>
 #include <fc/io/stdio.hpp>
 

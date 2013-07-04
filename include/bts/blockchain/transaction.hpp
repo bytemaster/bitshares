@@ -1,10 +1,12 @@
 #pragma once
-#include "units.hpp"
-#include "address.hpp"
-#include "proof_of_work.hpp"
+#include <bts/units.hpp>
+#include <bts/address.hpp>
+#include <bts/proof_of_work.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/sha224.hpp>
 #include <fc/io/varint.hpp>
+
+namespace bts {
 
 /**
  *  A reference to a transaction and output index.
@@ -14,14 +16,12 @@ struct output_reference
   fc::sha224        trx_hash;   // the hash of a transaction.
   uint8_t           output_idx; // the output index in the transaction trx_hash
 };
-FC_REFLECT( output_reference, (trx_hash)(output_idx) )
 
 enum claim_type
 {
    /** basic claim by single address */
    claim_by_address = 0,
 };
-FC_REFLECT_ENUM( claim_type, (claim_by_address) )
 
 
 /**
@@ -47,7 +47,6 @@ struct trx_input
     output_reference   output_ref;
     claim_type         output_type;
 };
-FC_REFLECT( trx_input, (output_flags)(output_index)(output_ref) )
 
 
 /**
@@ -62,7 +61,6 @@ struct trx_input_by_address : public trx_input
    enum type_enum { type =  claim_type::claim_by_address };
    fc::ecc::compact_signature address_sig;
 };
-FC_REFLECT_DERIVED( trx_input_by_address, (trx_input), (address_sig) );
 
 
 /**
@@ -80,7 +78,6 @@ struct trx_output
     bond_type      unit;
     claim_type     claim_func;
 };
-FC_REFLECT( trx_output, (amount)(unit)(claim_func) )
 
 /**
  *  Used by normal bitcoin-style outputs spendable with
@@ -91,7 +88,6 @@ struct trx_output_by_address : public trx_output
    enum type_enum { type =  claim_type::claim_by_address };
    address  claim_address;  // the address that can claim this input.
 };
-FC_REFLECT_DERIVED( trx_output_by_address, (trx_output), (claim_address) )
 
 
 /**
@@ -102,14 +98,12 @@ struct generic_trx_in
   uint8_t           in_type;
   std::vector<char> data;
 };
-FC_REFLECT( generic_trx_in, (in_type)(data) )
 
 struct generic_trx_out
 {
   uint8_t           out_type;
   std::vector<char> data;
 };
-FC_REFLECT( generic_trx_out, (out_type)(data) )
 
 /**
  *  @brief maps inputs to outputs.
@@ -121,11 +115,21 @@ struct transaction
    std::vector<generic_trx_in>  inputs;
    std::vector<generic_trx_out> outputs;
 };
-FC_REFLECT( transaction, (version)(inputs)(outputs) )
 
 struct signed_transaction : public transaction
 {
     std::vector<fc::ecc::compact_signature> sigs;
 };
-FC_REFLECT_DERIVED( signed_transaction, (transaction), (sigs) )
 
+} // namespace bts
+
+FC_REFLECT( bts::output_reference, (trx_hash)(output_idx) )
+FC_REFLECT_ENUM( bts::claim_type, (claim_by_address) )
+FC_REFLECT( bts::trx_input, (output_ref) )
+FC_REFLECT_DERIVED( bts::trx_input_by_address, (bts::trx_input), (address_sig) );
+FC_REFLECT( bts::trx_output, (amount)(unit)(claim_func) )
+FC_REFLECT_DERIVED( bts::trx_output_by_address, (bts::trx_output), (claim_address) )
+FC_REFLECT( bts::generic_trx_in, (in_type)(data) )
+FC_REFLECT( bts::generic_trx_out, (out_type)(data) )
+FC_REFLECT( bts::transaction, (version)(inputs)(outputs) )
+FC_REFLECT_DERIVED( bts::signed_transaction, (bts::transaction), (sigs) )

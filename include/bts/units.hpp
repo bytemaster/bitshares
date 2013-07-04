@@ -10,27 +10,16 @@ namespace bts
  */
 enum unit_type 
 {
-    BitShares   = 0,
-    OneOzGold   = 1,
-    OneOzSilver = 2,
-    USD         = 3,
-    EUR         = 4,
-    YUAN        = 5,
-    GBP         = 6,
-    BitCoin     = 7,
+    BitShares  = 0,
+    BitGold    = 1,
+    BitSilver  = 2,
+    BitUSD     = 3,
+    BitEUR     = 4,
+    BitYUAN    = 5,
+    BitGBP     = 6,
+    BitBTC     = 7,
     NumUnits    
 };
-FC_REFLECT_ENUM( unit_type, 
-      (BitShares)
-      (OneOzGold)
-      (OneOzSilver)
-      (USD)
-      (EUR)
-      (YUAN)
-      (GBP)
-      (BitCoin)
-      (NumUnits) 
-)
 
 struct bond_type
 {
@@ -41,7 +30,19 @@ struct bond_type
 
 } // namespace bts
 
-FC_REFLECT( bond_type, (issue_type)(backing_type) )
+FC_REFLECT_ENUM( bts::unit_type, 
+      (BitShares)
+      (BitGold)
+      (BitSilver)
+      (BitUSD)
+      (BitEUR)
+      (BitYUAN)
+      (BitGBP)
+      (BitBTC)
+      (NumUnits) 
+)
+
+FC_REFLECT( bts::bond_type, (issue_type)(backing_type) )
 
 // TODO: define raw pack to 1 byte
 

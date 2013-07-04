@@ -1,4 +1,4 @@
-#include "proof_of_work.hpp"
+#include <bts/proof_of_work.hpp>
 #include <fc/crypto/sha512.hpp>
 #include <fc/crypto/blowfish.hpp>
 #include <fc/thread/thread.hpp>

@@ -46,6 +46,7 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 
 
 set( sources 
+     src/dds/output_by_address_cache.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
      src/address.cpp
