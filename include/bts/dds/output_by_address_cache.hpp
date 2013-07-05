@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/blockchain/transaction.hpp>
+#include <bts/dds/table_header.hpp>
 #include <fc/filesystem.hpp>
 
 namespace bts
@@ -32,24 +33,38 @@ namespace bts
         output_by_address_cache();
         ~output_by_address_cache();
 
-        void load( const fc::path& cache_dir );
+        /**
+         *  Loads or creates the table in cache_dir
+         *
+         *  @throw if create is false and files are not found
+         */
+        void load( const fc::path& cache_dir, bool create = false );
+
+        /**
+         *  Sync's the cache to disk.
+         */
+        void save();
 
         fc::sha224 calculate_hash()const;
 
-        uint32_t                get_num_chunks()const;
+        const table_header&     get_header()const;
+
+        /**
+         *  Returns the raw contents of the given table chunk.
+         *
+         *  @throw if chunk_num is invalid.
+         */
         std::vector<char>       get_chunk( uint32_t chunk_num )const;
-        std::vector<fc::sha224> get_chunk_hashes()const;
+
+        /**
+         *  Used when downloading the table in parts to overwrite the contents of a particular chunk.
+         */
+        void                    set_chunk( uint32_t chunk_num, const std::vector<char>& );
 
         /**
          *  @return the set of unspent outputs for a particular block.
          */
         std::vector<uint32_t> get_unspent_by_block( uint32_t block_number );
-
-
-        /**
-         *  Sync's the cache to disk.
-         */
-        void sync();
 
         /**
          *  Stores entry e in the cache and returns the index it was

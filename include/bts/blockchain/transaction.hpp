@@ -5,6 +5,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/crypto/sha224.hpp>
 #include <fc/io/varint.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace bts {
 
@@ -20,7 +21,9 @@ struct output_reference
 enum claim_type
 {
    /** basic claim by single address */
-   claim_by_address = 0,
+   null_claim_type  = 0,
+   claim_by_address = 1,
+   num_claim_types
 };
 
 
@@ -122,6 +125,26 @@ struct signed_transaction : public transaction
 };
 
 } // namespace bts
+
+namespace fc
+{
+  namespace raw 
+  {
+    template<typename Stream> 
+    inline void pack( Stream& s, const bts::claim_type& v )
+    {
+       pack( s, char(v) );
+    }
+    template<typename Stream> 
+    inline void unpack( Stream& s, bts::claim_type& v )
+    {
+       uint8_t o;
+       unpack( s, o );
+       v = bts::claim_type(o);
+       FC_ASSERT( o < bts::num_claim_types )
+    }
+  }
+}
 
 FC_REFLECT( bts::output_reference, (trx_hash)(output_idx) )
 FC_REFLECT_ENUM( bts::claim_type, (claim_by_address) )
