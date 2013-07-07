@@ -1,6 +1,6 @@
 #pragma once
-#include <bts/dds/dividend_cache.hpp>
-#include <bts/dds/transfer_output_cache.hpp>
+//#include <bts/dds/dividend_table.hpp>
+#include <bts/dds/output_by_address_table.hpp>
 
 namespace bts { namespace dds {
   
@@ -12,10 +12,11 @@ namespace bts { namespace dds {
    */
   struct dds_index
   {
+      dds_index():block_number(0){}
+
       uint32_t                block_number;
       std::vector<fc::sha224> dividend_table_hashes;
-      std::vector<fc::sha224> by_address_hashes;
-      //std::vector<fc::sha224> bid_hashes;
+      table_header            by_address_header;
   };
 
   /**
@@ -42,27 +43,30 @@ namespace bts { namespace dds {
         *  Loads data from the specified directory or creates the directory if it does
         *  not exist.
         */
-       void load( const fc::path& data_store_dir );
+       void load( const fc::path& data_store_dir, bool create = true );
 
        /**
         *  Syncs all memory-mapped files.
         */
-       void sync();
+       void save();
 
        /**
-        *  Calculates the combined hash of all dividend and transfer output caches
+        *  Calculates the combined hash of all dividend and transfer output tables
         */
-       fc::sha224 calculate_hash()const
+       fc::sha224 calculate_hash()const;
 
-       dividend_cache&            get_dividend_cache( const unit_type& u );
-       output_by_address_cache&   get_output_by_address_cache();
+       const dds_index&           get_index()const;
 
-       //output_bid_cache&        get_output_bid_cache();
-       //output_name_cache&       get_output_name_cache();
-       //output_escrow_cache&     get_output_escrow_cache();
+       //dividend_table&            get_dividend_table( const unit_type& u );
+       output_by_address_table&   get_output_by_address_table();
+
+       //output_bid_table&        get_output_bid_table();
+       //output_escrow_table&     get_output_escrow_table();
 
      private:
        std::unique_ptr<detail::deterministic_data_store_impl> my; 
   };
 
 }} // namespace bts::dds
+
+FC_REFLECT( bts::dds::dds_index, (block_number)(dividend_table_hashes)(by_address_header) )

@@ -12,6 +12,8 @@
 *.la
 *.a
 
+fc
+doc/html
 CMakeCache.txt
 Makefile
 CMakeFiles
@@ -21,4 +23,5 @@ pow_test
 unit_tests
 wallet_test
 libbshare.a
-
+tests/dds_test
+tests/pow_test

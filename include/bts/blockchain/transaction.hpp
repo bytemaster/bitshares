@@ -87,6 +87,9 @@ struct trx_input_by_address : public trx_input
  */
 struct trx_output
 {
+    trx_output( claim_type t)
+    :amount(0),
+     claim_func(t){}
     uint64_t       amount;
     bond_type      unit;
     claim_type     claim_func;
@@ -99,10 +102,14 @@ struct trx_output
 struct trx_output_by_address : public trx_output
 {
    enum type_enum { type =  claim_type::claim_by_address };
+   trx_output_by_address()
+   :trx_output( claim_type::claim_by_address ), lock_time(0){}
+
+   uint32_t lock_time;
    address  claim_address;  // the address that can claim this input.
    friend bool operator==( const trx_output_by_address& a, const trx_output_by_address& b )
    {
-      return a.claim_address == b.claim_address;
+      return a.claim_address == b.claim_address && (a.lock_time == b.lock_time);
    }
 };
 
@@ -165,7 +172,7 @@ FC_REFLECT_ENUM( bts::claim_type, (null_claim_type)(claim_by_address)(num_claim_
 FC_REFLECT( bts::trx_input, (output_ref) )
 FC_REFLECT_DERIVED( bts::trx_input_by_address, (bts::trx_input), (address_sig) );
 FC_REFLECT( bts::trx_output, (amount)(unit)(claim_func) )
-FC_REFLECT_DERIVED( bts::trx_output_by_address, (bts::trx_output), (claim_address) )
+FC_REFLECT_DERIVED( bts::trx_output_by_address, (bts::trx_output), (claim_address)(lock_time) )
 FC_REFLECT( bts::generic_trx_in, (in_type)(data) )
 FC_REFLECT( bts::generic_trx_out, (out_type)(data) )
 FC_REFLECT( bts::transaction, (version)(inputs)(outputs) )

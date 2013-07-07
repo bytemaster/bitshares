@@ -47,17 +47,18 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 
 
 set( sources 
-     vendor/SFMT-src-1.4/SFMT.c
      src/dds/output_by_address_table.cpp
+     src/dds/dds.cpp
+     src/address.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
-     src/address.cpp
 #    src/wallet.cpp
 #     src/account.cpp
 #     src/miner.cpp
 #     src/chain_state.cpp
      vendor/cityhash-1.0.3/src/city.cc
      vendor/cityhash-1.0.3/src/crc.cpp
+     vendor/SFMT-src-1.4/SFMT.c
      src/proof_of_work.cpp )
 
 add_library( bshare ${sources} )
