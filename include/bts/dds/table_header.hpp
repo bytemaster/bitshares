@@ -1,6 +1,7 @@
 #pragma once
 #include <fc/reflect/reflect.hpp>
 #include <fc/crypto/sha224.hpp>
+#include <set>
 
 namespace bts
 {
@@ -16,7 +17,7 @@ namespace bts
 
        claim_type              table_type;    
        std::vector<fc::sha224> chunk_hashes; ///< The hashes of every chunk
-       std::vector<uint32_t>   free_list;    ///< Table entries that are unused.
+       std::set<uint32_t>      free_list;    ///< Table entries that are unused, stored in-order
        uint32_t                size;         ///< The last element in the table
   };
 }

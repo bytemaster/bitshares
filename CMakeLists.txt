@@ -25,8 +25,8 @@ IF( WIN32 )
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")    
 	ENDIF()
 ELSE(WIN32)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3 -msse4.2" )
-#   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3 " )
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-unused-local-typedefs -fmax-errors=3" ) 
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wno-unused-local-typedefs -fmax-errors=3" )
 ENDIF(WIN32)
 
 
@@ -37,6 +37,7 @@ include_directories( ${CMAKE_SOURCE_DIR}/fc/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/fc/vendor/boost_1.51/include )
 include_directories( ${CMAKE_SOURCE_DIR}/vendor/cityhash-1.0.3/src )
+include_directories( ${CMAKE_SOURCE_DIR}/vendor/SFMT-src-1.4 )
 include_directories( ${Boost_INCLUDE_DIR} )
    
 #link_directories( ${Boost_LIBRARY_DIRS} )
@@ -46,7 +47,8 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 
 
 set( sources 
-     src/dds/output_by_address_cache.cpp
+     vendor/SFMT-src-1.4/SFMT.c
+     src/dds/output_by_address_table.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
      src/address.cpp
@@ -60,11 +62,7 @@ set( sources
 
 add_library( bshare ${sources} )
 
-add_executable( ecc_test tests/ecc_test.cpp )
-target_link_libraries( ecc_test bshare fc ${BOOST_LIBRARIES})
-
-add_executable( pow_test tests/pow_test.cpp )
-target_link_libraries( pow_test bshare fc ${BOOST_LIBRARIES})
+add_subdirectory( tests )
 
 #add_executable( wallet_test tests/wallet_test.cpp )
 #target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})

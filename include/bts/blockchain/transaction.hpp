@@ -6,6 +6,7 @@
 #include <fc/crypto/sha224.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/exception/exception.hpp>
+#include <city.h>
 
 namespace bts {
 
@@ -14,8 +15,17 @@ namespace bts {
  */
 struct output_reference
 {
+  output_reference():output_idx(0){}
   fc::sha224        trx_hash;   // the hash of a transaction.
   uint8_t           output_idx; // the output index in the transaction trx_hash
+  friend bool operator==( const output_reference& a, const output_reference& b )
+  {
+     return a.trx_hash == b.trx_hash && a.output_idx == b.output_idx;
+  }
+  friend bool operator!=( const output_reference& a, const output_reference& b )
+  {
+     return !(a==b);
+  }
 };
 
 enum claim_type
@@ -90,6 +100,10 @@ struct trx_output_by_address : public trx_output
 {
    enum type_enum { type =  claim_type::claim_by_address };
    address  claim_address;  // the address that can claim this input.
+   friend bool operator==( const trx_output_by_address& a, const trx_output_by_address& b )
+   {
+      return a.claim_address == b.claim_address;
+   }
 };
 
 
@@ -147,7 +161,7 @@ namespace fc
 }
 
 FC_REFLECT( bts::output_reference, (trx_hash)(output_idx) )
-FC_REFLECT_ENUM( bts::claim_type, (claim_by_address) )
+FC_REFLECT_ENUM( bts::claim_type, (null_claim_type)(claim_by_address)(num_claim_types) )
 FC_REFLECT( bts::trx_input, (output_ref) )
 FC_REFLECT_DERIVED( bts::trx_input_by_address, (bts::trx_input), (address_sig) );
 FC_REFLECT( bts::trx_output, (amount)(unit)(claim_func) )
@@ -156,3 +170,18 @@ FC_REFLECT( bts::generic_trx_in, (in_type)(data) )
 FC_REFLECT( bts::generic_trx_out, (out_type)(data) )
 FC_REFLECT( bts::transaction, (version)(inputs)(outputs) )
 FC_REFLECT_DERIVED( bts::signed_transaction, (bts::transaction), (sigs) )
+
+namespace std
+{
+  template<typename T>
+  struct hash;
+
+  template<>
+  struct hash<bts::output_reference>
+  {
+     std::size_t operator()( const bts::output_reference& r )const
+     {
+        return CityHash64( (char*)&r, sizeof(r) );
+     }
+  };
+}

@@ -5,14 +5,15 @@
 
 namespace bts
 {
-  namespace detail { class output_by_address_cache_impl; }
+  namespace detail { class output_by_address_table_impl; }
 
   /**
    *   2 MB blocks, each with a dirty bit to identify when re-hashing is necessary
    *   Maintain a free list stored in the last block.
    *
    *   Maintain's an index to allow quick lookup bout output_reference, this index
-   *   does not need to be deterministic.
+   *   does not need to be deterministic nor stored, it can be regenerated at any
+   *   time.
    *
    *   Maintain's an index of outputs sorted by block number so that they may be
    *   quickly captured by the miners and pulled forward.  This index takes the form
@@ -20,33 +21,53 @@ namespace bts
    *
    *   1 million unspent outputs would require about 100 MB on disk.
    */
-  class output_by_address_cache
+  class output_by_address_table
   {
      public:
+        /**
+         *  A row in the table.
+         */
         struct entry
         {
             entry();
+            /** The transaction id / output number in the trx */
             output_reference       out_id;
+            /** The block that included the output referenced by out_id */
             uint32_t               block_num;
+            /** The output from the specified transaction */
             trx_output_by_address  output;
+
+            friend bool operator==( const entry& a, const entry& b )
+            {
+               return (a.out_id == b.out_id) && (a.block_num == b.block_num) && (a.output == b.output);
+            }
         };
-        output_by_address_cache();
-        ~output_by_address_cache();
+        output_by_address_table();
+        ~output_by_address_table();
 
         /**
-         *  Loads or creates the table in cache_dir
+         *  Loads or creates the table in table_dir
          *
          *  @throw if create is false and files are not found
          */
-        void load( const fc::path& cache_dir, bool create = false );
+        void load( const fc::path& table_dir, bool create = false );
 
         /**
-         *  Sync's the cache to disk.
+         *  Sync's the table to disk.
          */
         void save();
 
+        /**
+         *  Updates the table header and returns hash.  This is a convienence method
+         *  for fc::sha224::hash( get_header() );
+         */
         fc::sha224 calculate_hash()const;
 
+        /**
+         *  Returns the current state of the output header.  Note there is no
+         *  method to set the header because the header should always faithfully
+         *  reflect the contents of the table.
+         */
         const table_header&     get_header()const;
 
         /**
@@ -67,7 +88,7 @@ namespace bts
         std::vector<uint32_t> get_unspent_by_block( uint32_t block_number );
 
         /**
-         *  Stores entry e in the cache and returns the index it was
+         *  Stores entry e in the table and returns the index it was
          *  stored at.
          */
         void       store( uint32_t pos, const entry& e );
@@ -87,10 +108,10 @@ namespace bts
         const entry&   get( uint32_t entry_id );
 
      private:
-        std::unique_ptr<detail::output_by_address_cache_impl> my;
+        std::unique_ptr<detail::output_by_address_table_impl> my;
   };
   
 
 } // namespace bts
 
-FC_REFLECT( bts::output_by_address_cache::entry, (out_id)(block_num)(output) )
+FC_REFLECT( bts::output_by_address_table::entry, (out_id)(block_num)(output) )

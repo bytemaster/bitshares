@@ -3,7 +3,10 @@
 
 namespace bts
 {
-   address::address(){}
+   address::address()
+   {
+    memset( addr.data, 0, sizeof(addr.data) );
+   }
    address::address( const std::string& base58str )
    {
       std::vector<char> v = fc::from_base58( fc::string(base58str) );
