@@ -1,198 +1,79 @@
+#include <bts/wallet.hpp>
+#include <bts/proof_of_work.hpp>
+#include <fc/thread/thread.hpp>
 #include <fc/io/raw.hpp>
-#include "wallet.hpp"
-#include <fc/filesystem.hpp>
-#include <fc/exception/exception.hpp>
-#include <fc/crypto/blowfish.hpp>
-#include <fc/crypto/hex.hpp>
-#include <fc/io/fstream.hpp>
-#include <unordered_map>
-#include <assert.h>
 
-struct private_wallet_key
+
+namespace bts
 {
-   static private_wallet_key create()
+   wallet::wallet()
+   {}
+   wallet::~wallet()
+   {}
+
+   /**
+    *  The purpose of this method is to increase the 
+    *  computational complexity of a brute force attack
+    *  against a given seed.  This method should take
+    *  about 1 second to run.
+    */
+   fc::sha256 stretch_seed( const fc::sha256& seed )
    {
-        private_wallet_key k;
-        k.priv_key  = fc::ecc::private_key::generate();
-        k.pub_key = k.priv_key.get_public_key();
-        k.addr = address(k.pub_key);
-        return k;
+      fc::thread t("stretch_seed");
+      return t.async( [=]() {
+          fc::sha256 last = seed;
+          for( uint32_t i = 0; i < 10; ++i )
+          {
+              auto p = proof_of_work( last );  
+              last = fc::sha256::hash( (char*)&p, sizeof(p) );
+          }
+          return last; 
+      } ).wait();
    }
-   address               addr;
-   fc::ecc::public_key   pub_key;
-   fc::ecc::private_key  priv_key;
-};
-FC_REFLECT( private_wallet_key, (addr)(pub_key)(priv_key) )
 
-struct wallet_format
-{
-   uint32_t                         version;
-   std::vector<private_wallet_key>  private_keys;  // public/private keys
-};
-FC_REFLECT( wallet_format, (version)(private_keys) )
-
-namespace detail
-{
-  class wallet_impl
-  {
-     public:
-        bool                             _is_locked;
-        fc::sha512                       _master_key;
-        std::vector<address>             _addresses;     // all used addresses
-        std::vector<private_wallet_key>  _private_keys;  // public/private keys
-        std::unordered_map<address,int>  _address_index; // maps to index in private_keys
-  };
-}
-
-
-wallet::wallet()
-:my( new detail::wallet_impl() )
-{
-  my->_is_locked   = false;
-}
-
-wallet::~wallet()
-{}
-
-fc::path wallet::wallet_file()const
-{ 
-  return my->_wallet_file; 
-}
-
-
-   pow_hash h = proof_of_work( fc::sha256::hash( password.c_str(), password.size() ) );
-   my->_master_secret = fc::sha512::hash( (char*)&h,sizeof(h) );
-
-
-void wallet::save( const fc::path& walletdat, const std::string& password )
-{
-    if( is_locked() )
-    {
-      FC_THROW_EXCEPTION( exception, "Cannot save wallet in locked state because "
-                                     "no private keys are currently loaded" );
-    }
-
-    if( !fc::exists( fc::absolute(walletdat).parent_path() ) )
-    {
-      FC_THROW_EXCEPTION( file_not_found_exception, 
-                          "Invalid directory ${dir}", 
-                          ("dir",walletdat.parent_path() ) );
-    }
-
-
-    wallet_format wf;
-    wf.version      = 0;
-    wf.private_keys = my->_private_keys;
-
-    auto vec = fc::raw::pack( wf );
-    vec.resize( vec.size() + 8 -  vec.size()%8); // trim the padding...
-
-    auto r = fc::sha512::hash( vec.data(), vec.size() );
-    vec.resize( vec.size() + 32 );
-    memcpy( vec.data() + vec.size() - 32, (char*)&r, 32 );
-    
-    fc::blowfish bf;
-    auto h = fc::sha256::hash( password.c_str(), password.size() );
-    bf.start( (unsigned char*)&h, sizeof(h) );
-    bf.encrypt( (unsigned char*)vec.data(), vec.size(), fc::blowfish::CBC );
-
-    fc::ofstream o( walletdat );
-    o.write( vec.data(), vec.size() );
-}
-
-bool wallet::is_locked()const
-{
-  return my->_is_locked;
-}
-
-/** nulls all private keys 
- **/
-void wallet::lock()
-{
-   // TODO: check for unsaved private keys and throw an exception!
-   
-   for( auto itr = my->_private_keys.begin();
-             itr != my->_private_keys.end();
-             ++itr )
+   fc::sha256 calc_sequence( const fc::ecc::public_key& mpub, uint32_t seq )
    {
-       itr->priv_key = fc::ecc::private_key(); // clear it.
+      fc::sha256::encoder enc;
+      fc::raw::pack( enc, mpub );
+      fc::raw::pack( enc, seq );
+      return enc.result();
    }
-   my->_is_locked = true;
-}
 
-/** decrypts and reloads all private keys using password */
-void wallet::unlock( const std::string& password )
-{
-   load( my->_wallet_file, password );
-}
-
-/** encrypts the wallet with the new password, must be unlocked()
- * to call this method.
- */
-void wallet::change_password( const std::string& old_password, 
-                              const std::string& new_password )
-{
-   if( is_locked() ) unlock( old_password );
-
-   // save it to a temporary location first, we don't want any
-   // failures to cause us to lose the current wallet information.
-   save( my->_wallet_file.generic_string() + fc::string(".tmp"), new_password );
-   // backup the old wallet, until we can be sure the new one is moved 
-   // into place.
-   fc::rename( my->_wallet_file, my->_wallet_file.generic_string() + ".back" );
-   // rename the tmp
-   fc::rename( my->_wallet_file.generic_string()+".tmp", my->_wallet_file );
-   // remove the backup
-   fc::remove( my->_wallet_file.generic_string() + ".back" );
-}
-
-/**
- *  Pre-generates num addresses and returns them.
- */
-std::vector<address> wallet::reserve( uint32_t num )
-{
-   if( is_locked() )
+   void                 wallet::set_seed( const fc::sha256& seed )
    {
-        FC_THROW_EXCEPTION( exception, 
-                            "Wallet must be unlocked to add new private keys" );
+     _stretched_seed = stretch_seed(seed); 
+     _master_priv = fc::ecc::private_key::generate_from_seed(_stretched_seed); 
+     _master_pub  = _master_priv->get_public_key();
    }
-   if( num > 1000 )
+                        
+   void                 wallet::set_master_public_key( const fc::ecc::public_key& k )
    {
-        FC_THROW_EXCEPTION( exception, "Attempt to reserve too-many private keys at once" );
+      _master_priv = nullptr;
+      _master_pub = k;
    }
-   my->_private_keys.reserve( my->_private_keys.size()+num );
-   std::vector<address> r(num);
-   for( uint32_t i = 0; i < num; ++i )
-   {
-      my->_private_keys.push_back( private_wallet_key::create() );
-      r[i] = my->_private_keys.back().addr;
-   }
-   return r;
-}
 
+   fc::ecc::private_key    wallet::get_master_private_key()const
+   {
+      FC_ASSERT( _stretched_seed != fc::sha256() );
+      return *_master_priv; 
+   }
 
-std::vector<address>       wallet::get_addresses()const
-{
-   std::vector<address> r;
-   r.reserve( my->_private_keys.size() );
-   for( uint32_t i = 0; i < my->_private_keys.size(); ++i )
+   fc::ecc::public_key  wallet::get_master_public_key()const
    {
-      r.push_back( my->_private_keys[i].addr);
+      FC_ASSERT( !!_master_pub );
+      return *_master_pub;
    }
-   return r;
-}
 
-fc::ecc::compact_signature wallet::sign( const fc::sha256& digest, const address& a )
-{
-   if( is_locked() )
+   fc::ecc::public_key  wallet::get_public_key( uint32_t index )
    {
-        FC_THROW_EXCEPTION( exception, 
-                            "Wallet must be unlocked to sign" );
+      FC_ASSERT( !!_master_pub );
+      return _master_pub->mult( calc_sequence( *_master_pub, index) );
    }
-   auto idx = my->_address_index.find(a);
-   if( idx == my->_address_index.end() )
+
+   fc::ecc::private_key wallet::get_private_key( uint32_t index )
    {
-        FC_THROW_EXCEPTION( exception, "Unknown address ${addr}", ("addr",a) );
+      FC_ASSERT( _stretched_seed != fc::sha256() );
+      FC_ASSERT( !!_master_pub );
+      return fc::ecc::private_key::generate_from_seed( _stretched_seed, calc_sequence(*_master_pub, index) ); 
    }
-   return my->_private_keys[idx->second].priv_key.sign_compact( digest );
 }

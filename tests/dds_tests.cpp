@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE BitSharesTest
 #include  <boost/test/unit_test.hpp>
 #include <bts/dds/output_by_address_table.hpp>
+#include <bts/wallet.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/reflect/variant.hpp>
@@ -82,4 +83,19 @@ BOOST_AUTO_TEST_CASE( output_by_address_table_load )
     elog( "${e}", ("e", e.to_detail_string() ) );
     throw;
   }
+}
+
+BOOST_AUTO_TEST_CASE( wallet_test )
+{
+   bts::wallet w;
+   w.set_seed( fc::sha256::hash( "helloworld", 10 ) );
+
+   bts::wallet w2;
+   w2.set_master_public_key( w.get_master_public_key() );
+
+   for( uint32_t i = 0; i < 10; ++i )
+   {
+      BOOST_CHECK(  bts::address(w.get_public_key(i))                   == w2.get_public_key(i) );
+      BOOST_CHECK(  bts::address(w.get_private_key(i).get_public_key()) == w2.get_public_key(i) );
+   }
 }

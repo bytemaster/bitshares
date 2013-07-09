@@ -43,6 +43,7 @@ include_directories( ${Boost_INCLUDE_DIR} )
 #link_directories( ${Boost_LIBRARY_DIRS} )
 
 add_subdirectory( fc )
+#add_subdirectory( vendor/libzerocoin )
 set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_DATE_TIME_LIBRARY} ${Boost_CHRONO_LIBRARY} ${ALL_OPENSSL_LIBRARIES})
 
 
@@ -50,9 +51,9 @@ set( sources
      src/dds/output_by_address_table.cpp
      src/dds/dds.cpp
      src/address.cpp
+     src/wallet.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
-#    src/wallet.cpp
 #     src/account.cpp
 #     src/miner.cpp
 #     src/chain_state.cpp

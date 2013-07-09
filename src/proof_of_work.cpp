@@ -14,6 +14,21 @@
 
 typedef std::pair<uint64, uint64> uint128;
 uint128 CityHashCrc128(const char *s, size_t len);
+fc::sha1 proof_of_work( const fc::sha256& in)
+{
+   unsigned char* buf = new unsigned char[MB128];
+   fc::sha1 out;
+   try {
+     out = proof_of_work( in, buf );
+   } catch ( ... )
+   {
+    delete [] buf;
+    throw;
+   }
+   delete[] buf;
+   return out;
+}
+
 
 /**
  *  This proof-of-work is computationally difficult even for a single hash,

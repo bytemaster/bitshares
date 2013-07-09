@@ -14,6 +14,7 @@ typedef fc::sha1 pow_hash;
  *  @return processed hash after doing proof of work.
  */
 pow_hash proof_of_work( const fc::sha256& in, unsigned char* buffer_128m );
+pow_hash proof_of_work( const fc::sha256& in );
 
 class block_header;
 
