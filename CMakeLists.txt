@@ -52,6 +52,7 @@ set( sources
      src/dds/dds.cpp
      src/address.cpp
      src/wallet.cpp
+     src/network/stcp_socket.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
 #     src/account.cpp
