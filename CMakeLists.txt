@@ -53,6 +53,7 @@ set( sources
      src/address.cpp
      src/wallet.cpp
      src/network/stcp_socket.cpp
+     src/network/server.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
 #     src/account.cpp
@@ -76,3 +77,6 @@ add_subdirectory( tests )
 
 #add_executable( bitshares src/main.cpp )
 #target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})
+
+add_executable( bitshared bitshared.cpp )
+target_link_libraries( bitshared bshare fc ${BOOST_LIBRARIES} )

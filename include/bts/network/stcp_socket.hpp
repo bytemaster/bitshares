@@ -33,5 +33,6 @@ class stcp_socket : public virtual fc::iostream
     fc::blowfish   _recv_bf;
 };
 
+typedef std::shared_ptr<stcp_socket> stcp_socket_ptr;
 
 } } // bts::network
