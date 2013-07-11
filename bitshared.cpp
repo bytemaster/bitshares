@@ -7,6 +7,7 @@
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <bts/network/server.hpp>
+#include <bts/bitmessage.hpp>
 #include <iostream>
 #include <sstream>
 
@@ -48,6 +49,8 @@ int main( int argc, char** argv )
     netw.configure( cfg.server_config );
     netw.connect_to_peers( 8 );
 
+    fc::wallet wal;
+
     fc::thread _cin("cin");
     std::string line;
     while( _cin.async([&](){ return !std::getline( std::cin, line ).eof(); } ).wait() ) 
@@ -56,6 +59,16 @@ int main( int argc, char** argv )
        std::stringstream ss(line);
        ss >> cmd;
        if( cmd == "q" ) return 0;
+       if( cmd== "login" ) 
+       {
+            std::string pass;
+            ss >> pass;
+            ilog( "logging into your wallet..." );
+            wal.set_seed( fc::sha256::hash( pass.c_str(), pass.size() ) );
+            auto s = wal.get_public_key(1).serialize();
+            id = fc::to_base58( s.data, sizeof(s.data) );
+            ilog( "logged in as: ${id}", ("id", id) );
+       }
        if( cmd== "send" ) 
        {
             std::string pubkey;
