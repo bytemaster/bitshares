@@ -54,6 +54,7 @@ set( sources
      src/wallet.cpp
      src/network/stcp_socket.cpp
      src/network/server.cpp
+     src/bitmessage.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
 #     src/account.cpp

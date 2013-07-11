@@ -87,6 +87,11 @@ namespace bts { namespace network {
 
         void set_delegate( server_delegate* del );
         
+        /**
+         * Attempts to open at least count connections to 
+         * peers.
+         */
+        void connect_to_peers( uint32_t count );
         void configure( const config& c );
 
         void broadcast( const message& m );

@@ -8,6 +8,7 @@
 #include <fc/thread/thread.hpp>
 #include <bts/network/server.hpp>
 #include <iostream>
+#include <sstream>
 
 
 struct bitshared_config
@@ -45,13 +46,36 @@ int main( int argc, char** argv )
 
     bts::network::server netw;
     netw.configure( cfg.server_config );
-
+    netw.connect_to_peers( 8 );
 
     fc::thread _cin("cin");
     std::string line;
     while( _cin.async([&](){ return !std::getline( std::cin, line ).eof(); } ).wait() ) 
     {
-       if( line == "q" ) return 0;
+       std::string cmd;
+       std::stringstream ss(line);
+       ss >> cmd;
+       if( cmd == "q" ) return 0;
+       if( cmd== "send" ) 
+       {
+            std::string pubkey;
+            ss>>pubkey;
+
+            std::string subject;
+            std::string message;
+            fc::cout<<"subject: ";
+            _cin.async([&](){ return !std::getline( std::cin, subject ).eof(); } ).wait();
+            fc::cout<<"----------------------------------------------\n";
+            while( _cin.async([&](){ return !std::getline( std::cin, line ).eof(); } ).wait() )
+            {
+              if( line == "." )
+              {
+                fc::cout<<"----------------------------------------------\n";
+                break;
+              }
+              message += line + "\n";
+            }
+       }
     }
 
 
