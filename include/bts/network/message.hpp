@@ -24,6 +24,7 @@ namespace bts { namespace network {
      config       = 1,
      known_hosts  = 2,
      error_report = 3,
+     mail         = 4, ///< bitmessage
   };
 
   struct config_msg

@@ -7,6 +7,7 @@
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <bts/network/server.hpp>
+#include <bts/db/peer_ram.hpp>
 #include <iostream>
 #include <sstream>
 
@@ -44,7 +45,9 @@ int main( int argc, char** argv )
 
     auto cfg = fc::json::from_file( cfile ).as<bitshared_config>();
 
-    bts::network::server netw;
+    auto peerdb = std::make_shared<bts::db::peer_ram>();
+
+    bts::network::server netw(peerdb);
     netw.configure( cfg.server_config );
     netw.connect_to_peers( 8 );
 

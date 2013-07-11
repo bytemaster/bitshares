@@ -1,10 +1,12 @@
 #include <bts/network/connection.hpp>
 #include <bts/network/message.hpp>
 #include <fc/network/tcp_socket.hpp>
+#include <fc/network/resolve.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/string.hpp>
 
 namespace bts { namespace network {
 
@@ -56,8 +58,23 @@ namespace bts { namespace network {
   void connection::connect( const std::string& host_port )
   {
       int idx = host_port.find( ':' );
-     // auto eps = fc::asio::resolve( host_port.substr( 0, idx ), host_port.substr( idx+1 ));
-      // TODO: loop over all endpoints
+      auto eps = fc::resolve( host_port.substr( 0, idx ), fc::to_int64(host_port.substr( idx+1 )));
+      ilog( "connect to ${host_port} and resolved ${endpoints}", ("host_port", host_port)("endpoints",eps) );
+      for( auto itr = eps.begin(); itr != eps.end(); ++itr )
+      {
+         try 
+         {
+            my->sock = std::make_shared<stcp_socket>();
+            my->sock->connect_to(*itr); 
+            ilog( "    connected to ${ep} failed.", ("ep", *itr) );
+            return;
+         } 
+         catch ( const fc::exception& e )
+         {
+            wlog( "    attempt to connect to ${ep} failed.", ("ep", *itr) );
+         }
+      }
+      FC_THROW_EXCEPTION( exception, "unable to connect to ${host_port}", ("host_port",host_port) );
   }
 
   void connection::send( const message& m )
