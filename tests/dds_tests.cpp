@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE( output_by_address_table_load )
 
     bts::output_by_address_table::entry e;
     BOOST_CHECK_THROW( table.store( 1, e ), fc::out_of_range_exception );
-    assert( e  == entry() );
+    assert( e  == bts::output_by_address_table::entry() );
 
     e.out_id.output_idx = 1;
     e.block_num         = 95;

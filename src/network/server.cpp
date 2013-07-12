@@ -1,7 +1,10 @@
 #include <bts/network/server.hpp>
+#include <bts/network/connection.hpp>
+#include <bts/db/peer.hpp>
 #include <fc/network/tcp_socket.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
+#include <fc/thread/future.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/log/logger.hpp>
 
@@ -9,20 +12,11 @@ namespace bts { namespace network {
 
   namespace detail
   {
-     class connection_impl
-     {
-        public:
-          connection_impl()
-          :con_del(nullptr){}
-          stcp_socket_ptr      sock;
-          connection_delegate* con_del;
-     };
-
      class server_impl
      {
         public:
-          server_impl()
-          :ser_del(nullptr)
+          server_impl(const bts::db::peer_ptr& pdb )
+          :peerdb(pdb),ser_del(nullptr),desired_peer_count(DESIRED_PEER_COUNT)
           {}
 
           ~server_impl()
@@ -44,16 +38,38 @@ namespace bts { namespace network {
                 elog( "unexpected exception" );
             }
           }
-
+          db::peer_ptr                peerdb;
           server_delegate*            ser_del;
           std::vector<connection_ptr> connections;
           server::config              cfg;
           fc::tcp_server              tcp_serv;
+          uint32_t                    desired_peer_count;
 
           fc::future<void>            accept_loop_complete;
+          fc::future<void>            connect_complete;
 
 
-
+          void connect_random_peer()
+          {
+             // TODO: make random.
+             auto rec = peerdb->get_random_inactive();
+             try 
+             {
+                auto con = std::make_shared<connection>();
+                con->connect( rec.server_ep );
+                rec.last_com = fc::time_point::now();
+                rec.ep       = con->get_socket()->get_socket().remote_endpoint();
+                peerdb->store( rec );
+                peerdb->set_active( rec.server_ep );
+                connections.push_back(con);
+                if( ser_del ) ser_del->on_connected(con);
+             } 
+             catch ( fc::exception& e )
+             {
+                wlog( "unable to connect to peer: ${e}", ("e", e.to_detail_string()) );
+                throw;
+             }
+          }
 
           /**
            *  This method is called via async from accept_loop and
@@ -103,6 +119,7 @@ namespace bts { namespace network {
                    // limit the rate at which we accept connections to prevent
                    // DOS attacks.
                    fc::usleep( fc::microseconds( 1000*30 ) );
+                   sock = std::make_shared<stcp_socket>();
                 }
              } 
              catch ( fc::exception& e )
@@ -120,61 +137,25 @@ namespace bts { namespace network {
   }
 
 
-  connection::connection( const stcp_socket_ptr& c )
-  :my( new detail::connection_impl() )
-  {
-    my->sock = c;
-  }
-
-  connection::connection()
-  :my( new detail::connection_impl() )
-  {
-  }
-
-  connection::~connection()
-  {
-    try {
-        my->sock->close();
-    } 
-    catch ( ... )
-    {
-      wlog( "unhandled exception on close" );   
-    }
-  }
 
 
-  void connection::set_delegate( connection_delegate* d )
-  {
-     my->con_del = d;
-  }
-
-  void connection::close()
-  {
-     my->sock->close();
-  }
-
-  void connection::connect( const std::string& host_port )
-  {
-      int idx = host_port.find( ':' );
-     // auto eps = fc::asio::resolve( host_port.substr( 0, idx ), host_port.substr( idx+1 ));
-      // TODO: loop over all endpoints
-  }
-
-  void connection::send( const message& m )
-  {
-      send( fc::raw::pack(m) );     
-  }
-
-  void connection::send( const std::vector<char>& packed_msg )
-  {
-  }
-
-
-  server::server()
-  :my( new detail::server_impl() ){}
+  server::server(const bts::db::peer_ptr& pdb ) 
+  :my( new detail::server_impl(pdb) ){}
 
   server::~server()
   {
+     try 
+     {
+        if( my->connect_complete.valid() && !my->connect_complete.ready() )
+        {
+             my->connect_complete.cancel();
+             my->connect_complete.wait();
+        }
+     } 
+     catch ( ... )
+     {
+         wlog( "unhandled exception" );
+     }
   }
 
   void server::set_delegate( server_delegate* sd )
@@ -186,13 +167,43 @@ namespace bts { namespace network {
   {
       // TODO: should I check to make sure we haven't already been configured?
       my->cfg = c;
+      for( uint32_t i = 0; i < c.bootstrap_endpoints.size(); ++i )
+      {
+         db::peer::record r;
+         r.server_ep = fc::ip::endpoint::from_string(c.bootstrap_endpoints[i]);
+         my->peerdb->store( r );
+      }
+
       ilog( "listening for stcp connections on port ${p}", ("p",c.port) );
       my->tcp_serv.listen( c.port );
       my->accept_loop_complete = fc::async( [=](){ my->accept_loop(); } ); 
   }
+
+  /**
+   *  Starts an async process of connecting to peers of we are connected to 
+   *  less than count peers and we are not already attempting to connect to
+   *  peers.  The process will stop once count peers are found and connected.
+   */
   void server::connect_to_peers( uint32_t count )
   {
-     if( my->connections.size() >= count ) return;
+     my->desired_peer_count = count;
+
+     // don't do anything if we are already trying to connect to peers.
+     if( my->connect_complete.valid() && !my->connect_complete.ready() )
+     {
+        return; // already in the process of connecting
+     }
+
+     // do this process async because it could take a while.
+     my->connect_complete = fc::async( [=](){
+        // do not use iterators here because connect_next_peer could yield and
+        // invalidate iterators, indexes are safe because we check them after
+        // every operation.
+        for( uint32_t i = my->connections.size(); i < my->desired_peer_count; ++i )
+        {
+           my->connect_random_peer();
+        }
+     });
   }
 
   void server::broadcast( const message& m )

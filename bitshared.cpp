@@ -4,10 +4,13 @@
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
 #include <fc/io/fstream.hpp>
+#include <fc/crypto/base58.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <bts/network/server.hpp>
 #include <bts/bitmessage.hpp>
+#include <bts/wallet.hpp>
+#include <bts/db/peer_ram.hpp>
 #include <iostream>
 #include <sstream>
 
@@ -45,11 +48,13 @@ int main( int argc, char** argv )
 
     auto cfg = fc::json::from_file( cfile ).as<bitshared_config>();
 
-    bts::network::server netw;
+    auto peerdb = std::make_shared<bts::db::peer_ram>();
+
+    bts::network::server netw(peerdb);
     netw.configure( cfg.server_config );
     netw.connect_to_peers( 8 );
 
-    fc::wallet wal;
+    bts::wallet wal;
 
     fc::thread _cin("cin");
     std::string line;
@@ -66,7 +71,7 @@ int main( int argc, char** argv )
             ilog( "logging into your wallet..." );
             wal.set_seed( fc::sha256::hash( pass.c_str(), pass.size() ) );
             auto s = wal.get_public_key(1).serialize();
-            id = fc::to_base58( s.data, sizeof(s.data) );
+            auto id = fc::to_base58( s.data, sizeof(s.data) );
             ilog( "logged in as: ${id}", ("id", id) );
        }
        if( cmd== "send" ) 

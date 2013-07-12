@@ -16,7 +16,7 @@ namespace bts
         size(0){}
 
        claim_type              table_type;    
-       std::vector<fc::sha224> chunk_hashes; ///< The hashes of every chunk
+       std::vector<fc::sha224> chunk_hashes; ///< The hashes of merkel root of each chunk
        std::set<uint32_t>      free_list;    ///< Table entries that are unused, stored in-order
        uint32_t                size;         ///< The last element in the table
   };
