@@ -50,6 +50,7 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 set( sources 
      src/dds/output_by_address_table.cpp
      src/dds/dds.cpp
+     src/dds/disk_merkle_tree.cpp 
      src/address.cpp
      src/wallet.cpp
      src/network/stcp_socket.cpp

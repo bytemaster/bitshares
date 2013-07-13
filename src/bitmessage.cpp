@@ -18,6 +18,7 @@ fc::sha224   bitmessage::calculate_id()const
 bitmessage&  bitmessage::sign( const fc::ecc::private_key& from )
 {
     if( !private_content ) { private_content = signed_content(); }
+    private_content->timestamp = fc::time_point::now();
 
     fc::sha256::encoder enc;
     fc::raw::pack( enc, static_cast<const content&>(*private_content) );

@@ -21,6 +21,7 @@ namespace bts
 
         struct content
         {
+           fc::time_point                   timestamp;
            fc::ecc::public_key              to;
            std::vector<fc::ecc::public_key> cc;
            std::vector<uint32_t>            reply_channels;
@@ -75,7 +76,7 @@ namespace bts
 }
 
 FC_REFLECT( bts::bitmessage, (nonce)(channel)(timestamp)(dh_key)(dh_check)(data) )
-FC_REFLECT( bts::bitmessage::content, (to)(cc)(reply_channels)(subject)(body)(attachments) )
+FC_REFLECT( bts::bitmessage::content, (timestamp)(to)(cc)(reply_channels)(subject)(body)(attachments) )
 FC_REFLECT_DERIVED( bts::bitmessage::signed_content, (bts::bitmessage::content), (from_sig) )
 FC_REFLECT( bts::bitmessage::attachment, (name)(data) )
 

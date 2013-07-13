@@ -6,14 +6,40 @@
 #include <fc/log/logger.hpp>
 #include <fc/reflect/variant.hpp>
 #include <bts/bitmessage.hpp>
+#include <bts/dds/mmap_array.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
 
 using namespace bts;
 
+BOOST_AUTO_TEST_CASE( mmap_array_test )
+{
+  try {
+    fc::temp_directory temp_dir;
+    mmap_array<fc::sha224> hasha;
+    hasha.open( temp_dir.path() / "test.array" );
+
+    BOOST_CHECK( hasha.size() == 0 );
+    ilog("");
+    hasha.resize( 1024 );
+    ilog("");
+    BOOST_CHECK( hasha.size() == 1024 );
+    ilog("");
+    hasha.at(4) = fc::sha224::hash( "hello", 5 );
+    ilog("");
+    hasha.close();
+    hasha.open( temp_dir.path() / "test.array" );
+    BOOST_CHECK( hasha.size() == 1024 );
+    BOOST_CHECK( hasha.at(4) == fc::sha224::hash( "hello", 5 ) );
+  } catch ( fc::exception& e )
+  {
+     elog( "${e}", ("e",e.to_detail_string() ) );
+     throw;
+  }
+}
+
 BOOST_AUTO_TEST_CASE( output_by_address_table_load )
 {
- return; // TODO: restore
   try{
     output_by_address_table table;
     BOOST_CHECK_THROW( table.load( "out_by_addr.table" ), fc::file_not_found_exception );
@@ -108,6 +134,7 @@ BOOST_AUTO_TEST_CASE( wallet_test )
 
 BOOST_AUTO_TEST_CASE( bitmessage_test )
 {
+  try {
     fc::ecc::private_key from = fc::ecc::private_key::generate();
     fc::ecc::private_key toA  = fc::ecc::private_key::generate();
     fc::ecc::private_key toB  = fc::ecc::private_key::generate();
@@ -136,4 +163,9 @@ BOOST_AUTO_TEST_CASE( bitmessage_test )
 
     unpacked = fc::raw::unpack<bts::bitmessage>(packed);
     BOOST_CHECK( !unpacked.decrypt( toB ) );
+  } catch ( fc::exception& e )
+  {
+     elog( "${e}", ("e",e.to_detail_string() ) );
+     throw;
+  }
 }

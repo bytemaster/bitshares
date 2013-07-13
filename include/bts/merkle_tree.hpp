@@ -1,4 +1,6 @@
 #pragma once
+#include <fc/crypto/sha224.hpp>
+#include <vector>
 
 namespace bts {
 
