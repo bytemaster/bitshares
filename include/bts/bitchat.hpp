@@ -52,6 +52,9 @@ namespace bts
                                         const bitchat_contact_status& from ){};
     };
 
+    std::string to_bitchat_address( const fc::ecc::public_key& e );
+    fc::ecc::public_key from_bitchat_address( const std::string& s );
+
 
     /**
      *  Provides a simple chat client that hides both the
@@ -71,11 +74,18 @@ namespace bts
           ~bitchat();
 
        //   void set_channels( const std::vector<uint32_t>& chans );
-          void set_keys( const std::vector<fc::ecc::private_key>& mykeys );
+       //   void set_keys( const std::vector<fc::ecc::private_key>& mykeys );
+          void               add_identity( const bitchat_identity& id );
+          bitchat_identity   get_identity( const std::string& label );
+
+          void               add_contact( const bitchat_contact& c );
+          bitchat_contact    get_contact( const std::string& label );
 
           void set_delegate( bitchat_delegate* d );
 
-          void send_message( const std::string& msg, const std::string& cont );
+          void send_message( const std::string& msg, 
+                             const bitchat_contact& to, 
+                             const bitchat_identity& from );
 
           void request_contact( const bitchat_identity& id, const std::string& msg );
 

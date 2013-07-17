@@ -286,6 +286,7 @@ namespace bts { namespace network {
 
   void server::unsubscribe_from_channel( const channel_id&  chan )
   {
+     return; // TODO: fix this method, it causees a crash on exit in asio code
      my->channels.erase(chan.id());
      //TODO notify all of my peers that I am no longer subscribign to chan
      
@@ -347,14 +348,30 @@ namespace bts { namespace network {
   {
      // allocate on heap and reference count so that multiple async
      // operations can reference the same buffer.
-     auto buf = std::make_shared<std::vector<char>>(fc::raw::pack(m));
-     for( auto itr = my->connections.begin();
-          itr != my->connections.end();
-          ++itr ) //uint32_t i = 0; i < my->connections.size(); ++i )
+     if( m.chan == channel_id( peer_proto ) )
      {
-        auto tmp = itr->second;
-                                       // not the index.
-        fc::async( [tmp,buf](){ tmp->send( *buf ); } );
+        auto buf = std::make_shared<std::vector<char>>(fc::raw::pack(m));
+        for( auto itr = my->connections.begin();
+             itr != my->connections.end();
+             ++itr ) //uint32_t i = 0; i < my->connections.size(); ++i )
+        {
+           auto tmp = itr->second;
+           fc::async( [tmp,buf](){ tmp->send( *buf ); } );
+        }
+     }
+     else
+     {
+        auto itr = my->connections_by_channel.find( m.chan );
+        if( itr == my->connections_by_channel.end() )
+        {
+           FC_THROW_EXCEPTION( exception, "no connections subscribing to channel ${c}", ("c", m.chan) );
+        }
+        auto buf = std::make_shared<std::vector<char>>(fc::raw::pack(m));
+        for( auto con = itr->second.begin(); con != itr->second.end(); ++con )
+        {
+              auto tmp = *con;
+              fc::async( [tmp,buf](){ tmp->send( *buf ); } );
+        }
      }
   }
 

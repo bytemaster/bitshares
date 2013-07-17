@@ -1,20 +1,43 @@
 #include <bts/bitchat.hpp>
 #include <bts/network/channel_pow_stats.hpp>
+#include <fc/reflect/variant.hpp>
+#include <fc/crypto/base58.hpp>
 #include <unordered_map>
 #include <map>
 
 
+namespace bts 
+{
+
+    enum message_types 
+    {
+       data_msg      = 1, ///< a message encrypted to unknown receip
+       inventory_msg = 2, ///< publishes known invintory
+       get_inventory = 3, ///< publishes known invintory
+       get_msg       = 4  ///< sent to request an inventory item
+    };
+
+    enum data_message_types
+    {
+       bitchat_text_msg = 1
+    };
+
+
+    struct text_message
+    {
+        enum msg_type_enum { type = bitchat_text_msg };
+        text_message(const std::string& s = "")
+        :msg_type( type ),msg(s){}
+        fc::unsigned_int msg_type;
+        std::string      msg;
+    };
+
+} // namespace bts
+    FC_REFLECT( bts::text_message, (msg_type)(msg) );
 
 
 namespace bts 
 {
-   enum message_types 
-   {
-      data_msg      = 1, ///< a message encrypted to unknown receip
-      inventory_msg = 2, ///< publishes known invintory
-      get_inventory = 3, ///< publishes known invintory
-      get_msg       = 4  ///< sent to request an inventory item
-   };
 
    using namespace network;
    namespace detail 
@@ -25,12 +48,16 @@ namespace bts
      class bitchat_impl 
      {
         public:
+          bitchat_impl()
+          :del(nullptr){}
+
           bts::network::server_ptr netw;
 
           std::unordered_map<uint64_t, bitchat_channel_ptr> chans;
-          std::vector<bitchat_contact>                        _contacts;
-          std::vector<bitchat_identity>                       _idents;
-          std::map<uint64_t, channel_pow_stats>               _chan_stats;
+          std::map<std::string,bitchat_contact>             contacts;
+          std::map<std::string,bitchat_identity>            idents;
+          std::map<uint64_t, channel_pow_stats>             _chan_stats;
+          bitchat_delegate*                                 del;
 
 
           void handle_message( const connection_ptr& con, const message& m )
@@ -48,7 +75,7 @@ namespace bts
                fc::raw::unpack( ds, msg );
 
                // TODO validate difficulty...
-               auto msg_id = msg.calculate_id();
+              // auto msg_id = msg.calculate_id();
 
                try_decrypt_msg( con, m.chan, msg );
             }
@@ -62,22 +89,23 @@ namespace bts
           {
 
              // check for messages to me
-             for( auto itr = _idents.begin(); itr != _idents.end(); ++itr )
+             for( auto itr = idents.begin(); itr != idents.end(); ++itr )
              {
-                if( m.decrypt( itr->key ) )
+                if( m.decrypt( itr->second.key ) )
                 {
+                   // TODO: pass contact to handle data msg?
                    handle_data_msg( con, cid, m );
                    return;
                 }
              }
              // check for messages from others
-             for( auto itr = _contacts.begin(); itr != _contacts.end(); ++itr )
+             for( auto itr = contacts.begin(); itr != contacts.end(); ++itr )
              {
 
              }
 
              // check for messages from myself...?
-             for( auto itr = _idents.begin(); itr != _idents.end(); ++itr )
+             for( auto itr = idents.begin(); itr != idents.end(); ++itr )
              {
 
              }
@@ -140,16 +168,19 @@ namespace bts
    }
   */
 
-   void bitchat::set_keys( const std::vector<fc::ecc::private_key>& mykeys )
-   {
-   }
 
    void bitchat::set_delegate( bitchat_delegate* d )
    {
+     my->del = d;
    }
 
-   void bitchat::send_message( const std::string& msg, const std::string& contact_name )
+   void bitchat::send_message( const std::string& msg, const bitchat_contact& to, const bitchat_identity& from )
    {
+      bitchat_message m;
+      m.body( fc::raw::pack( text_message( msg ) ) );
+      m.sign( from.key );
+      m.encrypt( to.key );
+      ilog( "send_message ${m}", ("m",m) );
    }
 
    void bitchat::request_contact( const bitchat_identity& id, const std::string& msg )
@@ -166,6 +197,53 @@ namespace bts
 
    void bitchat::broadcast_signon( const bitchat_identity& id )
    {
+   }
+   void               bitchat::add_identity( const bitchat_identity& id )
+   {
+       // TODO: perform some sanity checks to prevent over-riding idents??
+       my->idents[id.label] = id;
+   }
+
+   bitchat_identity   bitchat::get_identity( const std::string& label )
+   {
+       auto itr = my->idents.find(label);
+       if( itr == my->idents.end() )
+       {
+         FC_THROW_EXCEPTION( key_not_found_exception, 
+                    "Unable to find identity with label ${label}", ("label", label) );
+       }
+       return itr->second;
+   }
+
+   void               bitchat::add_contact( const bitchat_contact& c )
+   {
+       my->contacts[c.label] = c;
+   }
+
+   bitchat_contact    bitchat::get_contact( const std::string& label )
+   {
+       auto itr = my->contacts.find(label);
+       if( itr == my->contacts.end() )
+       {
+         FC_THROW_EXCEPTION( key_not_found_exception, 
+                    "Unable to find contact with label ${label}", ("label", label) );
+       }
+       return itr->second;
+   }
+
+   std::string to_bitchat_address( const fc::ecc::public_key& e )
+   {
+      auto dat = e.serialize();
+      return fc::to_base58( dat.data, sizeof(dat) );
+   }
+
+   fc::ecc::public_key from_bitchat_address( const std::string& s )
+   {
+      auto dat = fc::from_base58( s );
+      fc::ecc::public_key_data d;
+      FC_ASSERT( dat.size() == sizeof(fc::ecc::public_key_data) );
+      memcpy( d.data, dat.data(), dat.size() );
+      return fc::ecc::public_key(d);
    }
 
 } // namespace bts
