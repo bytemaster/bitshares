@@ -271,7 +271,16 @@ namespace bts { namespace network {
 
   void server::subscribe_to_channel( const channel_id& chan, const channel_ptr& c )
   {
+     FC_ASSERT( my->channels.find(chan.id()) == my->channels.end() );
+
      my->channels[chan.id()] = c;
+     my->local_cfg.subscribed_channels.insert( chan );
+
+     subscribe_msg sm;
+     sm.channels.push_back(chan);
+
+     broadcast( message( sm, channel_id( peer_proto ) ) );
+
      //TODO notify all of my peers that I am now subscribing to chan
   }
 
@@ -279,6 +288,11 @@ namespace bts { namespace network {
   {
      my->channels.erase(chan.id());
      //TODO notify all of my peers that I am no longer subscribign to chan
+     
+     unsubscribe_msg sm;
+     sm.channels.push_back(chan);
+
+     broadcast( message( sm, channel_id( peer_proto ) ) );
   }
 
   void server::set_delegate( server_delegate* sd )

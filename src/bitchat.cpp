@@ -38,8 +38,6 @@ namespace bts
              FC_ASSERT( m.data.size() > 0 );
 
 
-
-
             fc::datastream<const char*>  ds(m.data.data(), m.data.size() );
             fc::unsigned_int msg_type;
             fc::raw::unpack( ds, msg_type );
@@ -129,6 +127,7 @@ namespace bts
 
    bitchat::~bitchat()
    {
+      my->netw->unsubscribe_from_channel( channel_id(network::chat_proto,0) );
       for( auto itr = my->chans.begin(); itr != my->chans.end(); ++itr )
       {
         itr->second->self = nullptr;

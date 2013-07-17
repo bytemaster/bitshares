@@ -14,7 +14,9 @@ namespace bts { namespace network {
      config       = 1,
      known_hosts  = 2,
      error_report = 3,
-     mail         = 4, ///< bitmessage
+     subscribe    = 4,
+     unsubscribe  = 5,
+     mail         = 6, ///< bitmessage
   };
 
   struct message
@@ -72,6 +74,18 @@ namespace bts { namespace network {
       std::vector<host> hosts;
   };
 
+  struct subscribe_msg
+  {
+     enum type_enum { type = message_code::subscribe };
+     std::vector<channel_id> channels;
+  };
+
+  struct unsubscribe_msg
+  {
+     enum type_enum { type = message_code::unsubscribe };
+     std::vector<channel_id> channels;
+  };
+
   struct error_report_msg
   {
      enum type_enum { type = message_code::error_report };
@@ -95,8 +109,13 @@ FC_REFLECT_ENUM( bts::network::message_code,
   (config)
   (known_hosts)
   (error_report)
+  (subscribe)
+  (unsubscribe)
   (mail)
   )
 FC_REFLECT( bts::network::host,             (ep)(last_com) )
 FC_REFLECT( bts::network::known_hosts_msg,  (hosts) )
 FC_REFLECT( bts::network::error_report_msg, (code)(message) )
+FC_REFLECT( bts::network::subscribe_msg,    (channels ) )
+FC_REFLECT( bts::network::unsubscribe_msg,  (channels ) )
+
