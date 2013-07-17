@@ -1,6 +1,5 @@
 #define BOOST_TEST_MODULE BitSharesTest
 #include  <boost/test/unit_test.hpp>
-#include <bts/dds/disk_merkle_tree.hpp>
 #include <bts/wallet.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
