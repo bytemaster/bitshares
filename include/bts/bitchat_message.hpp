@@ -48,7 +48,7 @@ namespace bts {
         const signed_content&       get_content()const;     
         void                        set_content(const signed_content& c);
 
-        uint32_t                    nonce;
+        uint16_t                    nonce; ///< increment timestamp after 63K tests
         fc::time_point              timestamp;
         fc::ecc::public_key         dh_key;
         uint32_t                    dh_check;
@@ -60,6 +60,7 @@ namespace bts {
         fc::optional<signed_content>  private_content;
 
     };
+
 }  // namespace btc
 
 #include <fc/reflect/reflect.hpp>
