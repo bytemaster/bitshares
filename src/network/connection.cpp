@@ -259,6 +259,11 @@ namespace bts { namespace network {
       FC_ASSERT( !!my->sock );
       ilog( "writing ${d} bytes", ("d", packed_msg.size() ) );
       uint64_t s = packed_msg.size();
+
+      // TODO: populate 4 bytes of size with random data
+      // because otherwise they would always be 0 and thus make
+      // the encryption easier to hack 
+      
       my->sock->write( (char*)&s, sizeof(s) );
       my->sock->write( packed_msg.data(), packed_msg.size() );
       my->sock->flush();
