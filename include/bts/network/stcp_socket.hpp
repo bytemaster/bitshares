@@ -26,11 +26,15 @@ class stcp_socket : public virtual fc::iostream
     virtual void     flush();
     virtual void     close();
 
+    void             get( char& c ) { read( &c, 1 ); }
+
   private:
     fc::ecc::private_key _priv_key;
-    fc::tcp_socket _sock;
-    fc::blowfish   _send_bf;
-    fc::blowfish   _recv_bf;
+    fc::array<char,8>    _buf;
+    uint32_t             _buf_len;
+    fc::tcp_socket       _sock;
+    fc::blowfish         _send_bf;
+    fc::blowfish         _recv_bf;
 };
 
 typedef std::shared_ptr<stcp_socket> stcp_socket_ptr;

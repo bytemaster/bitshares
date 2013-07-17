@@ -1,22 +1,12 @@
 #pragma once
+#include <bts/network/channel_id.hpp>
 #include <fc/time.hpp>
-#include <fc/reflect/reflect.hpp>
 #include <fc/array.hpp>
+#include <fc/io/varint.hpp>
 #include <fc/network/ip.hpp>
+#include <fc/io/raw.hpp>
 
 namespace bts { namespace network {
-
-  struct message
-  {
-     message()
-     :size(0),type(0){}
-
-     uint32_t          size;
-     fc::time_point    timestamp;
-     fc::array<char,4> chaincode;
-     uint16_t          type;
-     std::vector<char> data;
-  };
 
   enum message_code
   {
@@ -27,14 +17,46 @@ namespace bts { namespace network {
      mail         = 4, ///< bitmessage
   };
 
+  struct message
+  {
+     channel_id        chan;
+     std::vector<char> data;
+
+     message(){}
+     message( message&& m )
+     :chan(m.chan),data( std::move(m.data) ){}
+     message( const message& m )
+     :chan(m.chan),data( m.data ){}
+
+     template<typename T>
+     message( const T& m, const channel_id cid = channel_id() ) 
+     :chan(cid)
+     {
+        ilog( "message type: ${t} = ${v}", ("t", (message_code)T::type)("v", int(T::type)) );
+        fc::datastream<size_t> ps;
+        fc::raw::pack( ps, fc::unsigned_int( T::type ) );
+        fc::raw::pack( ps, m );
+        data.resize( ps.tellp() );
+
+        fc::datastream<char*> ds( data.data(), data.size() );
+        fc::raw::pack( ds, fc::unsigned_int( T::type ) );
+        fc::raw::pack( ds, m );
+        ilog( "message data size ${i}   ${data}" , ("i", data.size() )("data",data) );
+     }
+  };
+
+
   struct config_msg
   {
       enum type_enum { type = message_code::config };
       /** 
        *  A list of features supported by this client.
        */
-      std::vector<std::string> supported_features;
-      uint64_t                 min_relay_fee;
+      std::unordered_set<std::string> supported_features;
+      std::set<channel_id>            subscribed_channels;
+      fc::ip::endpoint                public_contact;
+
+      uint64_t                        min_relay_fee;
   };
 
   struct host
@@ -59,8 +81,22 @@ namespace bts { namespace network {
 
 }} // bts::message
 
-FC_REFLECT( bts::network::message,          (size)(timestamp)(chaincode)(type)(data) )
-FC_REFLECT( bts::network::config_msg,       (supported_features)(min_relay_fee) )
+FC_REFLECT( bts::network::message,          (chan)(data) )
+
+FC_REFLECT( bts::network::config_msg,       
+    (supported_features)
+    (subscribed_channels)
+    (public_contact)
+    (min_relay_fee) 
+    )
+
+FC_REFLECT_ENUM( bts::network::message_code,
+  (generic)
+  (config)
+  (known_hosts)
+  (error_report)
+  (mail)
+  )
 FC_REFLECT( bts::network::host,             (ep)(last_com) )
 FC_REFLECT( bts::network::known_hosts_msg,  (hosts) )
 FC_REFLECT( bts::network::error_report_msg, (code)(message) )

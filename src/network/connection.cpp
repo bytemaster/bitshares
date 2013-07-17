@@ -1,5 +1,7 @@
 #include <bts/network/connection.hpp>
 #include <bts/network/message.hpp>
+#include <bts/config.hpp>
+
 #include <fc/network/tcp_socket.hpp>
 #include <fc/network/resolve.hpp>
 #include <fc/reflect/variant.hpp>
@@ -15,21 +17,153 @@ namespace bts { namespace network {
      class connection_impl
      {
         public:
-          connection_impl()
-          :con_del(nullptr){}
+          connection_impl(connection& s)
+          :self(s),con_del(nullptr){}
+          connection&          self;
           stcp_socket_ptr      sock;
           connection_delegate* con_del;
+
+          fc::future<void>       read_loop_complete;
+          config_msg             remote_config;
+
+          void exchange_config( const config_msg& m )
+          {
+             message msg(m, channel_id(peer_proto) );
+             self.send( msg );
+             remote_config = read_remote_config();
+          }
+
+          message  read_next_message()
+          {
+             try {
+               uint64_t len;
+               sock->read( (char*)&len, sizeof(len) );
+               if( len > MAX_MESSAGE_SIZE )
+               {
+                  FC_THROW_EXCEPTION( exception, 
+                    "message size ${s} exceeds maximum message size ${m} kb",
+                    ("s",len / 1024)("m",MAX_MESSAGE_SIZE/1024) );
+               }
+               if( len % 8 != 0 )
+               {
+                  FC_THROW_EXCEPTION( exception, 
+                    "message size ${s} is not a multiple of 8 bytes",
+                    ("s",len / 1024) );
+               }
+               std::vector<char> tmp(len);
+               sock->read( tmp.data(), len );
+        //       ilog( "read ${i} ${data}" , 
+       //               ("i", tmp.size() )("data",tmp) );
+
+               message m;
+               fc::datastream<const char*> ds(tmp.data(), tmp.size());
+               fc::raw::unpack(ds,  m.chan );
+        //       ilog( "unpacked m.channel ${c}", ("c", m.chan) );
+
+               m.data.resize( ds.remaining() );
+               ds.read( m.data.data(),  m.data.size() );
+
+         //      ilog( "message data size ${i}   ${data}" , 
+          //            ("i", m.data.size() )("data",m.data) );
+               
+               return m;
+             } FC_RETHROW_EXCEPTIONS( warn, "error reading message" );
+          }
+
+          config_msg read_remote_config()
+          {
+            try
+            {
+               auto msg = read_next_message();
+
+               if( msg.chan != channel_id(peer_proto) )
+               {
+                  FC_THROW_EXCEPTION( exception, 
+                    "first message was not on channel ${c}",
+                    ("c",channel_id(peer_proto)) ); 
+               }
+
+               fc::datastream<const char*> ds( msg.data.data(), msg.data.size() );
+
+               fc::unsigned_int msg_type;
+               fc::raw::unpack( ds, msg_type );
+
+               if( msg_type.value != message_code::config )
+               {
+                  message_code c = (message_code)msg_type.value;
+                  FC_THROW_EXCEPTION( exception, 
+                    "received ${recv_type} but expected ${expect_type} "
+                    "first message was not on a config message",
+                    ("recv_type", c )
+                    ("expect_type",message_code::config) );
+               }
+               
+               config_msg cfg;
+               fc::raw::unpack( ds, cfg );
+               return cfg;
+            } FC_RETHROW_EXCEPTIONS( warn, "error reading remote configuration" );
+          }
+
+          void read_loop()
+          {
+            try {
+               while( true )
+               {
+                  auto m = read_next_message();
+                  if( con_del )
+                  {
+                     con_del->on_connection_message( self, m );
+                  }
+               }
+            } 
+            catch ( const fc::canceled_exception& e )
+            {
+              if( con_del )
+              {
+                con_del->on_connection_disconnected( self );
+              }
+              else
+              {
+                wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+              }
+            }
+            catch ( const fc::eof_exception& e )
+            {
+              if( con_del )
+              {
+                con_del->on_connection_disconnected( self );
+              }
+              else
+              {
+                wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+              }
+            }
+            catch ( const fc::exception& e )
+            {
+              if( con_del )
+              {
+                con_del->on_connection_disconnected( self );
+                elog( "disconnected" );
+              }
+              else
+              {
+                elog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+              }
+              throw;
+            }
+          }
      };
   } // namespace detail
 
-  connection::connection( const stcp_socket_ptr& c )
-  :my( new detail::connection_impl() )
+  connection::connection( const stcp_socket_ptr& c, const config_msg& loc_cfg  )
+  :my( new detail::connection_impl(*this) )
   {
     my->sock = c;
+    my->exchange_config( loc_cfg );
   }
 
   connection::connection()
-  :my( new detail::connection_impl() )
+  :my( new detail::connection_impl(*this) )
   {
   }
 
@@ -37,11 +171,23 @@ namespace bts { namespace network {
   connection::~connection()
   {
     try {
-        my->sock->close();
+      close();
+      if( my->read_loop_complete.valid() )
+      {
+        my->read_loop_complete.wait();
+      }
     } 
+    catch ( const fc::canceled_exception& e )
+    {
+      ilog( "canceled" );
+    }
+    catch ( const fc::exception& e )
+    {
+      wlog( "unhandled exception on close:\n${e}", ("e", e.to_detail_string()) );   
+    }
     catch ( ... )
     {
-      wlog( "unhandled exception on close" );   
+      elog( "unhandled exception on close" );   
     }
   }
   stcp_socket_ptr connection::get_socket()const
@@ -57,10 +203,13 @@ namespace bts { namespace network {
 
   void connection::close()
   {
-     my->sock->close();
+     if( my->sock )
+     {
+       my->sock->close();
+     }
   }
 
-  void connection::connect( const std::string& host_port )
+  void connection::connect( const std::string& host_port, const config_msg& m )
   {
       int idx = host_port.find( ':' );
       auto eps = fc::resolve( host_port.substr( 0, idx ), fc::to_int64(host_port.substr( idx+1 )));
@@ -71,7 +220,9 @@ namespace bts { namespace network {
          {
             my->sock = std::make_shared<stcp_socket>();
             my->sock->connect_to(*itr); 
-            ilog( "    connected to ${ep} failed.", ("ep", *itr) );
+            my->exchange_config( m ); 
+            ilog( "    connected to ${ep} with config ${conf}", ("ep", *itr)("conf",remote_config())  );
+            my->read_loop_complete = fc::async( [=](){ my->read_loop(); } );
             return;
          } 
          catch ( const fc::exception& e )
@@ -81,14 +232,41 @@ namespace bts { namespace network {
       }
       FC_THROW_EXCEPTION( exception, "unable to connect to ${host_port}", ("host_port",host_port) );
   }
+  void connection::start()
+  {
+     my->read_loop_complete = fc::async( [=](){ my->read_loop(); } );
+  }
 
   void connection::send( const message& m )
   {
-      send( fc::raw::pack(m) );     
+      std::vector<char>       data;
+      fc::datastream<size_t> ps; 
+      fc::raw::pack(ps,m.chan);
+
+      data.resize( 8*((ps.tellp() + m.data.size() + 7)/8) );
+      memset( data.data() + data.size()-8, 0, 8 );
+
+      fc::datastream<char*> ds(data.data(), data.size());
+      fc::raw::pack(ds,m.chan);
+      ds.write( m.data.data(), m.data.size() );
+
+      send( data );
   }
 
   void connection::send( const std::vector<char>& packed_msg )
   {
+      FC_ASSERT( packed_msg.size() % 8 == 0 );
+      FC_ASSERT( !!my->sock );
+      ilog( "writing ${d} bytes", ("d", packed_msg.size() ) );
+      uint64_t s = packed_msg.size();
+      my->sock->write( (char*)&s, sizeof(s) );
+      my->sock->write( packed_msg.data(), packed_msg.size() );
+      my->sock->flush();
+  }
+
+  config_msg connection::remote_config()const
+  {
+      return my->remote_config;
   }
 
 } } // namespace bts::network

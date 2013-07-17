@@ -14,14 +14,16 @@ namespace bts { namespace db {
        public:
          peer_ram();
          virtual  ~peer_ram();
-         virtual void          store( const record& r );
-         virtual record        fetch( const fc::ip::endpoint& ep );
-         virtual void          remove( const fc::ip::endpoint& ep );
-         virtual uint32_t      inactive_count()const;
 
-         virtual void          set_active( const fc::ip::endpoint& ep, bool a = true );
+         virtual void                 store( const record& r );
+         virtual record               fetch( const fc::ip::endpoint& ep )const;
+         virtual void                 remove( const fc::ip::endpoint& ep );
+         virtual void                 update_last_com( const fc::ip::endpoint& ep, 
+                                                       const fc::time_point& );
 
-         virtual record        get_random_inactive()const;
+         virtual std::vector<peer::record>  get_all_peers()const;
+         virtual std::vector<peer::record>  get_peers_on_channel( const network::channel_id& cid )const;
+         virtual std::vector<peer::record>  get_peers_with_feature( const std::string& s )const;
        private:
          std::unique_ptr<detail::peer_ram_impl> my;
    };

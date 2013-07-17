@@ -24,7 +24,7 @@ namespace bts
            fc::time_point                   timestamp;
            fc::ecc::public_key              to;
            std::vector<fc::ecc::public_key> cc;
-           std::vector<uint32_t>            reply_channels;
+           std::vector<fc::unsigned_int>    reply_channels;
            std::string                      subject;
            std::string                      body;
            std::vector<attachment>          attachments;
@@ -46,8 +46,12 @@ namespace bts
         bitmessage&  subject( const std::string& subj  );
         bitmessage&  body( const std::string& bod  );
         bitmessage&  attach( const std::vector<attachment>& att );
-        bitmessage&  send_channel( uint32_t c );
         bitmessage&  reply_channel( uint32_t c );
+        /**
+         *  @brief the proof of work must be quick to verify relative to the
+         *         time it took to generate because all nodes must validate 
+         *         many messages.  
+         */
         bitmessage&  do_proof_work( uint32_t d );
         bitmessage&  sign( const fc::ecc::private_key& from );
 
@@ -59,7 +63,6 @@ namespace bts
         void                        set_content(const signed_content& c);
 
         uint32_t                    nonce;
-        uint32_t                    channel;
         fc::time_point              timestamp;
         fc::ecc::public_key         dh_key;
         fc::sha256                  dh_check;
@@ -75,7 +78,7 @@ namespace bts
 
 }
 
-FC_REFLECT( bts::bitmessage, (nonce)(channel)(timestamp)(dh_key)(dh_check)(data) )
+FC_REFLECT( bts::bitmessage, (nonce)(timestamp)(dh_key)(dh_check)(data) )
 FC_REFLECT( bts::bitmessage::content, (timestamp)(to)(cc)(reply_channels)(subject)(body)(attachments) )
 FC_REFLECT_DERIVED( bts::bitmessage::signed_content, (bts::bitmessage::content), (from_sig) )
 FC_REFLECT( bts::bitmessage::attachment, (name)(data) )

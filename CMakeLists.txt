@@ -48,16 +48,17 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 
 
 set( sources 
-     src/dds/output_by_address_table.cpp
-     src/dds/dds.cpp
-     src/dds/disk_merkle_tree.cpp 
+     src/mini_pow.cpp 
      src/address.cpp
      src/wallet.cpp
      src/network/stcp_socket.cpp
      src/network/server.cpp
      src/network/connection.cpp
+     src/network/get_public_ip.cpp
      src/db/peer_ram.cpp
      src/bitmessage.cpp
+     src/bitchat.cpp
+     src/bitchat_message.cpp
 #     src/database.cpp
 #     src/block_chain.cpp
 #     src/account.cpp
@@ -70,7 +71,6 @@ set( sources
 
 add_library( bshare ${sources} )
 
-add_subdirectory( tests )
 
 #add_executable( wallet_test tests/wallet_test.cpp )
 #target_link_libraries( wallet_test bshare fc ${BOOST_LIBRARIES})
@@ -82,5 +82,10 @@ add_subdirectory( tests )
 #add_executable( bitshares src/main.cpp )
 #target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})
 
+add_executable( bitchatc bitchat/main.cpp )
+target_link_libraries( bitchatc bshare fc ${BOOST_LIBRARIES} )
+
 add_executable( bitshared bitshared.cpp )
 target_link_libraries( bitshared bshare fc ${BOOST_LIBRARIES} )
+
+add_subdirectory( tests )

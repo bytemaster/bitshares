@@ -1,8 +1,11 @@
 #pragma once
+#include <bts/network/channel_id.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/time.hpp>
 #include <memory>
+#include <set>
 #include <vector>
+#include <unordered_set>
 
 namespace bts { namespace db
 {
@@ -18,28 +21,26 @@ namespace bts { namespace db
       public:
          virtual ~peer(){}
 
-         struct record 
+         struct record
          {
-            record():bytes_recv(0),bytes_sent(0),warnings(0){}
+            record():failures(0){}
 
-            fc::ip::endpoint           ep;         // the ip/port of an active connection
-            fc::ip::endpoint           server_ep;  // if the server can be connected to
-            fc::time_point             last_com;
-            uint64_t                   bytes_recv;
-            uint64_t                   bytes_sent;
-            int64_t                    warnings;  // incremented for bad behavior
-            std::vector<std::string>   channels;
-            std::vector<std::string>   features;  // protocol features supported by this node
+            fc::ip::endpoint                         contact;
+            fc::time_point                           last_com;
+            uint32_t                                 failures;
+            std::set<network::channel_id>            channels;
+            std::unordered_set<std::string>          features;
          };
 
-         virtual void          store( const record& r ) = 0;
-         virtual record        fetch( const fc::ip::endpoint& ep ) = 0;
-         virtual void          remove( const fc::ip::endpoint& ep ) = 0;
-         virtual uint32_t      inactive_count()const = 0;
+         virtual void                 store( const record& r ) = 0;
+         virtual void                 remove( const fc::ip::endpoint& ep ) = 0;
+         virtual void                 update_last_com( const fc::ip::endpoint& ep, 
+                                                       const fc::time_point& ) = 0;
 
-         virtual void          set_active( const fc::ip::endpoint& ep, bool a = true ) = 0;
-
-         virtual record        get_random_inactive()const = 0;
+         virtual record               fetch( const fc::ip::endpoint& ep )const = 0;
+         virtual std::vector<record>  get_all_peers()const = 0;
+         virtual std::vector<record>  get_peers_on_channel( const network::channel_id& cid )const = 0;
+         virtual std::vector<record>  get_peers_with_feature( const std::string& s )const = 0;
       
    };
    typedef std::shared_ptr<peer> peer_ptr;
@@ -49,11 +50,8 @@ namespace bts { namespace db
 
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT( bts::db::peer::record, 
-   (ep)
-   (server_ep)
+   (contact)
    (last_com)
-   (bytes_recv)
-   (bytes_sent)
-   (warnings)
+   (failures)
    (channels)
    (features) )

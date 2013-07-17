@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/network/message.hpp>
+#include <bts/network/channel.hpp>
 #include <bts/network/stcp_socket.hpp>
 #include <bts/db/fwd.hpp>
 #include <bts/config.hpp>
@@ -27,7 +28,9 @@ namespace bts { namespace network {
 
   /**
    *   Abstracts the process of sending and receiving messages 
-   *   on the network.  
+   *   on the network.  All messages are broadcast or received
+   *   on a particular channel and each channel defines a protocol
+   *   of message types supported on that channel.
    */
   class server
   {
@@ -47,6 +50,11 @@ namespace bts { namespace network {
         server( const bts::db::peer_ptr& peer_db );
         ~server();
 
+        void close();
+
+        void subscribe_to_channel( const channel_id& chan, const channel_ptr& c );
+        void unsubscribe_from_channel( const channel_id& chan );
+
         /**
          *  @note del must out live this server and the server does not
          *        take ownership of the delegate.
@@ -64,7 +72,7 @@ namespace bts { namespace network {
 
         /**
          *  Sends a message to a particular connection.
-        void sendto( const connection_ptr& con, const message& );
+         *  void sendto( const connection_ptr& con, const message& );
          */
 
         std::vector<connection_ptr> get_connections()const;
@@ -72,6 +80,8 @@ namespace bts { namespace network {
       private:
         std::unique_ptr<detail::server_impl> my;
   };
+
+  typedef std::shared_ptr<server> server_ptr;
 
 } } // bts::server
 

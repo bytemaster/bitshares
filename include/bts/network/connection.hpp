@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/network/stcp_socket.hpp>
+#include <bts/network/message.hpp>
 
 namespace bts { namespace network {
   
@@ -16,8 +17,8 @@ namespace bts { namespace network {
    {
       public:
         virtual ~connection_delegate(){}; 
-        virtual void on_connection_message( const connection_ptr& c, const message& m ){};
-        virtual void on_connection_disconnected( const connection_ptr& c ){}
+        virtual void on_connection_message( connection& c, const message& m ){};
+        virtual void on_connection_disconnected( connection& c ){}
    };
 
 
@@ -27,7 +28,7 @@ namespace bts { namespace network {
    class connection : public std::enable_shared_from_this<connection>
    {
       public:
-        connection( const stcp_socket_ptr& c );
+        connection( const stcp_socket_ptr& c, const config_msg& local );
         connection();
         ~connection();
    
@@ -44,8 +45,20 @@ namespace bts { namespace network {
          */
         void send( const std::vector<char>& packed_msg );
    
-        void connect( const std::string& host_port );  
+        void connect( const std::string& host_port, const config_msg& c );  
         void close();
+
+        /**
+         *  Sends config_msg and blocks until a response is
+         *  provided.
+         */
+        config_msg remote_config()const;
+
+        /**
+         *  Start processing messages for this connection, call this
+         *  *AFTER* setting the delegate
+         */
+        void start();
       private:
         std::unique_ptr<detail::connection_impl> my;
    };

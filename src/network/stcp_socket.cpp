@@ -1,4 +1,5 @@
 #include <bts/network/stcp_socket.hpp>
+#include <fc/crypto/hex.hpp>
 #include <assert.h>
 #include <fc/log/logger.hpp>
 #include <fc/network/ip.hpp>
@@ -6,6 +7,7 @@
 namespace bts { namespace network {
 
 stcp_socket::stcp_socket()
+:_buf_len(0)
 {
 }
 stcp_socket::~stcp_socket()
@@ -28,9 +30,16 @@ void     stcp_socket::connect_to( const fc::ip::endpoint& ep )
     _recv_bf.start( (unsigned char*)&shared_secret, 54 );
 }
 
+/**
+ *   This method must read at least 8 bytes at a time from
+ *   the underlying TCP socket so that it can decrypt them. It
+ *   will buffer any left-over.
+ */
 size_t   stcp_socket::readsome( char* buffer, size_t max )
 {
-    assert( max % 8 == 0 );
+    assert( (max % 8) == 0 );
+    assert( max >= 8 );
+
     size_t s = _sock.readsome( buffer, max );
     if( s < 8 ) 
     {

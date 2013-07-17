@@ -37,6 +37,8 @@ namespace bts
            FC_THROW_EXCEPTION( file_not_found_exception, "directory '${dir}' does not exist", ("dir",dir) );
         }
       }
+      layers.resize(1)
+      layers[0] = std::make_shared<mmap_sha224_array>();
 
       // TODO: load the index file
       // TODO: map the memory segments
@@ -49,6 +51,21 @@ namespace bts
 
    void      disk_merkle_tree::resize( uint64_t s )
    {
+      layers[0].resize( s );
+      uint32_t layer = 1;
+      s = (s + 1)/2;
+      while( s )
+      {
+        if( layer >= layers.size() )
+        {
+          layers.push_back( std::make_shared<mmap_sha224_array>() );
+          layers.back()->load( my->get_layer_file(layer), true /*create*/ );
+        }
+        layers[layer]->resize(s);
+        s = (s + 1)/2;
+      }
+
+
       // TODO: unmap all memory segments
       //       grow each layer in the tree as necessary
    }

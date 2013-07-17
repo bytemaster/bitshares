@@ -8,6 +8,7 @@
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
 #include <bts/network/server.hpp>
+#include <bts/network/get_public_ip.hpp>
 #include <bts/bitmessage.hpp>
 #include <bts/wallet.hpp>
 #include <bts/db/peer_ram.hpp>
@@ -32,6 +33,7 @@ int main( int argc, char** argv )
 {
   try
   {
+    ilog( "my ip: ${ip}", ("ip",bts::network::get_public_ip()) );
     if( argc != 2 )
     {
        fc::cerr<<"Usage "<<argv[0]<<" CONFIG\n"; 
@@ -51,8 +53,11 @@ int main( int argc, char** argv )
     auto peerdb = std::make_shared<bts::db::peer_ram>();
 
     bts::network::server netw(peerdb);
+    ilog( "configuring node" );
     netw.configure( cfg.server_config );
-    netw.connect_to_peers( 8 );
+    ilog( "connecting to peers" );
+    fc::future<void> connect_complete = fc::async( [&]() { netw.connect_to_peers( 8 ); } );
+    ilog( "ready for commands" );
 
     bts::wallet wal;
 
@@ -63,7 +68,7 @@ int main( int argc, char** argv )
        std::string cmd;
        std::stringstream ss(line);
        ss >> cmd;
-       if( cmd == "q" ) return 0;
+       if( cmd == "q" ) break;
        if( cmd== "login" ) 
        {
             std::string pass;
@@ -95,9 +100,9 @@ int main( int argc, char** argv )
             }
        }
     }
-
-
-
+    ilog( "waiting for connect to complete" );
+    netw.close();
+    connect_complete.wait();
   } 
   catch ( fc::exception& e )
   {
