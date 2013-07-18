@@ -11,7 +11,7 @@ bitchat_message::bitchat_message()
 
 mini_pow   bitchat_message::calculate_id()const
 {
-  auto dat = fc::raw::pack( *this );
+  std::vector<char> dat = fc::raw::pack( *this );
   return mini_pow_hash( dat.data(), dat.size() );
 }
 

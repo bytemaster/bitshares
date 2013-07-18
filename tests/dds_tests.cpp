@@ -6,11 +6,41 @@
 #include <fc/reflect/variant.hpp>
 #include <bts/bitmessage.hpp>
 #include <bts/bitchat_message.hpp>
+#include <bts/mini_pow.hpp>
 #include <bts/dds/mmap_array.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
 
 using namespace bts;
+BOOST_AUTO_TEST_CASE( mini_pow_test )
+{
+  std::string hello_world( "hello world");
+  auto p = bts::mini_pow_hash( hello_world.c_str(), hello_world.size() );
+  ilog("p: ${p}", ("p",p));
+  auto p2 = bts::mini_pow_hash( hello_world.c_str(), hello_world.size() );
+  ilog("p2: ${p}", ("p",p2));
+  BOOST_CHECK( p == p2 );
+  ilog("");
+
+  uint32_t tmp[8];
+  memset( (char*)tmp, 0, sizeof(tmp) );
+  ilog("");
+
+  uint8_t* first = (uint8_t*)&p;
+  uint8_t min = 255;
+  while( *first > 225 )
+  {
+      tmp[0]++;
+      p = bts::mini_pow_hash( (char*)tmp, sizeof(tmp) );
+
+      if( *first < min ) 
+      {
+         ilog( "found ${h}", ("h",p) );
+         min = *first;
+      }
+  }
+
+}
 
 BOOST_AUTO_TEST_CASE( mmap_array_test )
 {
@@ -37,6 +67,7 @@ BOOST_AUTO_TEST_CASE( mmap_array_test )
      throw;
   }
 }
+
 
 
 BOOST_AUTO_TEST_CASE( wallet_test )

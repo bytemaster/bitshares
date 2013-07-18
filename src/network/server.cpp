@@ -75,7 +75,13 @@ namespace bts { namespace network {
 
           virtual void on_connection_message( connection& c, const message& m )
           {
-             ilog( "received message from .. " ); 
+             ilog( "received message from channel ${c} ", ("c", m.chan) ); 
+             auto itr = channels.find( m.chan.id() );
+             if( itr != channels.end() )
+             {
+                // TODO: perhaps do this ASYNC?
+                itr->second->handle_message( c.shared_from_this(), m );
+             }
           }
 
           virtual void on_connection_disconnected( connection& c )
@@ -134,6 +140,7 @@ namespace bts { namespace network {
                 pending_connections.insert(con);
 
                 ilog( "connect to ${c}", ("c", rec.contact) );
+                con->set_delegate( this );
                 con->connect( rec.contact, local_cfg );
                 peerdb->update_last_com( rec.contact, fc::time_point::now() );
                 connections[rec.contact] = con;
@@ -186,11 +193,21 @@ namespace bts { namespace network {
                 ilog( "accepted connection from ${ep}", ("ep", std::string(s->get_socket().remote_endpoint()) ) );
                 
                 auto con = std::make_shared<connection>(s,local_cfg);
+                con->set_delegate( this );
                 
                 // TODO: if the connection hangs and server_impl is
                 // deleted prior to reaching this step we may have
                 // a problem... 
-                connections[con->get_socket()->get_socket().remote_endpoint()] = con;
+                connections[con->remote_endpoint()] = con;
+
+                config_msg c = con->remote_config();
+                for( auto itr = c.subscribed_channels.begin();
+                          itr != c.subscribed_channels.end();
+                          ++itr )
+                {
+                    connections_by_channel[*itr].insert(con);
+                }
+
                 // TODO: add delegate to handle disconnect
                 con->start();
              } 
@@ -373,6 +390,15 @@ namespace bts { namespace network {
               fc::async( [tmp,buf](){ tmp->send( *buf ); } );
         }
      }
+  }
+  std::set<connection_ptr> server::connections_for_channel( const channel_id& c )
+  {
+      auto itr = my->connections_by_channel.find( c );
+      if( itr == my->connections_by_channel.end() )
+      {
+         FC_THROW_EXCEPTION( exception, "no connections subscribing to channel ${c}", ("c", c) );
+      }
+      return itr->second;
   }
 
   /**

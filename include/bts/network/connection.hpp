@@ -1,6 +1,7 @@
 #pragma once
 #include <bts/network/stcp_socket.hpp>
 #include <bts/network/message.hpp>
+#include <bts/mini_pow.hpp>
 
 namespace bts { namespace network {
   
@@ -33,6 +34,21 @@ namespace bts { namespace network {
         ~connection();
    
         stcp_socket_ptr get_socket()const;
+        fc::ip::endpoint remote_endpoint()const;
+
+        /**
+         *  Each connection needs to track which broadcasts it
+         *  should already know about so that we can avoid
+         *  rebroadcasting messages to nodes.
+         *
+         *  When an inintory message is sent to or received
+         *  from a particular node, we store all proofs in
+         *  a set that will be cleared after sufficient time.
+         */
+        void set_knows_broadcast( const mini_pow& p );
+        bool knows_message( const mini_pow& p );
+        void clear_knows_message( const mini_pow& p );
+        void clear_old_inv( fc::time_point t );
 
         void set_delegate( connection_delegate* d );
    

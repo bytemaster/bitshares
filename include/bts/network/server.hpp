@@ -5,6 +5,8 @@
 #include <bts/db/fwd.hpp>
 #include <bts/config.hpp>
 
+#include <set>
+
 namespace bts { namespace network {
   namespace detail { class server_impl; };
 
@@ -69,6 +71,8 @@ namespace bts { namespace network {
         void configure( const config& c );
 
         void broadcast( const message& m );
+
+        std::set<connection_ptr> connections_for_channel( const channel_id& c );
 
         /**
          *  Sends a message to a particular connection.

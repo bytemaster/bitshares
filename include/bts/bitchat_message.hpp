@@ -6,12 +6,24 @@
 #include <bts/network/channel_id.hpp>
 
 namespace bts {
+
+    enum message_types 
+    {
+       data_msg      = 1, ///< a message encrypted to unknown receip (sent in reponse to get_msg)
+       inventory_msg = 2, ///< publishes known invintory
+       get_inventory = 3, ///< fetch known invintory
+       get_data_msg  = 4  ///< sent to request an inventory item
+    };
+
+
     /**
      *  Define's the structure of messages broadcast on the
      *  bitchat_message network.     
      */
     struct bitchat_message
     {
+        enum type_enum { type = message_types::data_msg };
+
         struct content
         {
            network::channel_id  reply_channel;
@@ -61,9 +73,44 @@ namespace bts {
 
     };
 
+
+    // other protocol messages... not encapsulated by data_message
+    struct inv_message 
+    {
+        enum msg_type_enum { type = message_types::inventory_msg };
+        std::unordered_set<mini_pow>  items;
+    };
+
+    struct get_data_message
+    {
+        enum msg_type_enum { type = message_types::get_data_msg };
+        std::unordered_set<mini_pow>  items;
+    };
+
+
+
+
+
+    /** content of bitchat_message data */
+    enum data_message_types
+    {
+       bitchat_text_msg = 1
+    };
+    struct data_message
+    {
+        enum msg_type_enum { type = bitchat_text_msg };
+        data_message(const std::string& s = "")
+        :msg_type( type ),msg(s){}
+        fc::unsigned_int msg_type;
+        std::string      msg;
+    };
+
 }  // namespace btc
 
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT( bts::bitchat_message::content,        (reply_channel)(body) )
 FC_REFLECT_DERIVED( bts::bitchat_message::signed_content, (bts::bitchat_message::content), (timestamp)(from_sig) )
 FC_REFLECT( bts::bitchat_message,  (nonce)(timestamp)(dh_key)(dh_check)(data) )
+FC_REFLECT( bts::data_message, (msg_type)(msg) );
+FC_REFLECT( bts::inv_message, (items) )
+FC_REFLECT( bts::get_data_message, (items) )

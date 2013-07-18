@@ -9,6 +9,10 @@
 #include <fc/io/raw.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/string.hpp>
+#include <fc/thread/mutex.hpp>
+#include <fc/thread/scoped_lock.hpp>
+
+#include <unordered_map>
 
 namespace bts { namespace network {
 
@@ -22,6 +26,12 @@ namespace bts { namespace network {
           connection&          self;
           stcp_socket_ptr      sock;
           connection_delegate* con_del;
+
+          std::unordered_map<mini_pow,fc::time_point> known_inv;
+
+          /** used to ensure that messages are written completely */
+          fc::mutex              write_lock;
+
 
           fc::future<void>       read_loop_complete;
           config_msg             remote_config;
@@ -52,13 +62,12 @@ namespace bts { namespace network {
                }
                std::vector<char> tmp(len);
                sock->read( tmp.data(), len );
-        //       ilog( "read ${i} ${data}" , 
-       //               ("i", tmp.size() )("data",tmp) );
+               ilog( "read ${i} ${data}" ,  ("i", tmp.size() )("data",tmp) );
 
                message m;
                fc::datastream<const char*> ds(tmp.data(), tmp.size());
                fc::raw::unpack(ds,  m.chan );
-        //       ilog( "unpacked m.channel ${c}", ("c", m.chan) );
+               ilog( "unpacked m.channel ${c}", ("c", m.chan) );
 
                m.data.resize( ds.remaining() );
                ds.read( m.data.data(),  m.data.size() );
@@ -110,6 +119,7 @@ namespace bts { namespace network {
                while( true )
                {
                   auto m = read_next_message();
+                  assert( con_del != nullptr );
                   if( con_del )
                   {
                      con_del->on_connection_message( self, m );
@@ -264,8 +274,13 @@ namespace bts { namespace network {
       // because otherwise they would always be 0 and thus make
       // the encryption easier to hack 
       
-      my->sock->write( (char*)&s, sizeof(s) );
-      my->sock->write( packed_msg.data(), packed_msg.size() );
+      { // we have to lock writes which may yield so that multiple
+        // coroutines do not interleave their writes, this should be
+        // a cooperative lock vs a hard OS lock
+        fc::scoped_lock<fc::mutex> lock_write( my->write_lock );
+        my->sock->write( (char*)&s, sizeof(s) );
+        my->sock->write( packed_msg.data(), packed_msg.size() );
+      }
       my->sock->flush();
   }
 
@@ -273,5 +288,40 @@ namespace bts { namespace network {
   {
       return my->remote_config;
   }
+
+
+  void connection::set_knows_broadcast( const mini_pow& p )
+  {
+      my->known_inv[p] = fc::time_point::now();
+  }
+  bool connection::knows_message( const mini_pow& p )
+  {
+      return my->known_inv.find(p) != my->known_inv.end();
+  }
+  void connection::clear_knows_message( const mini_pow& p )
+  {
+      my->known_inv.erase(p);
+  }
+  void connection::clear_old_inv( fc::time_point inv )
+  {
+      for( auto itr = my->known_inv.begin(); itr != my->known_inv.end();  )
+      {
+         if( itr->second < inv ) 
+         {
+            itr = my->known_inv.erase(itr);
+         }
+         else
+         {
+            ++itr;
+         }
+      }
+  }
+
+  fc::ip::endpoint connection::remote_endpoint()const 
+  {
+    return get_socket()->get_socket().remote_endpoint();
+  }
+
+
 
 } } // namespace bts::network

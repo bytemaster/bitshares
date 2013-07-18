@@ -13,11 +13,11 @@ namespace bts
 
     struct bitchat_contact
     {
-        std::string             label;
-        fc::ecc::public_key     key;
+        std::string                        label;
+        fc::ecc::public_key                key;
         ///< contact broadcasts here,  I should listen
-        fc::ecc::private_key    recv_broadcast;
-        std::vector<uint32_t>   send_channels;
+        fc::ecc::private_key               recv_broadcast;
+        std::vector<network::channel_id>   send_channels;
     };
 
     struct bitchat_contact_status
