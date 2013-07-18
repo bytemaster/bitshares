@@ -43,6 +43,7 @@ include_directories( ${Boost_INCLUDE_DIR} )
 #link_directories( ${Boost_LIBRARY_DIRS} )
 
 add_subdirectory( fc )
+add_subdirectory( vendor/miniupnp/miniupnpc )
 #add_subdirectory( vendor/libzerocoin )
 set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_DATE_TIME_LIBRARY} ${Boost_CHRONO_LIBRARY} ${ALL_OPENSSL_LIBRARIES})
 
@@ -55,6 +56,7 @@ set( sources
      src/network/server.cpp
      src/network/connection.cpp
      src/network/get_public_ip.cpp
+     src/network/upnp.cpp
      src/db/peer_ram.cpp
      src/bitmessage.cpp
      src/bitchat.cpp
@@ -83,7 +85,7 @@ add_library( bshare ${sources} )
 #target_link_libraries( bitshares bshare fc ${BOOST_LIBRARIES})
 
 add_executable( bitchatc bitchat/main.cpp )
-target_link_libraries( bitchatc bshare fc ${BOOST_LIBRARIES} )
+target_link_libraries( bitchatc bshare fc ${BOOST_LIBRARIES} upnpc-static )
 
 add_executable( bitshared bitshared.cpp )
 target_link_libraries( bitshared bshare fc ${BOOST_LIBRARIES} )
