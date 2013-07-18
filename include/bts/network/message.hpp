@@ -34,7 +34,6 @@ namespace bts { namespace network {
      message( const T& m, const channel_id cid = channel_id() ) 
      :chan(cid)
      {
-        ilog( "message type: ${t} = ${v}", ("t", (message_code)T::type)("v", int(T::type)) );
         fc::datastream<size_t> ps;
         fc::raw::pack( ps, fc::unsigned_int( T::type ) );
         fc::raw::pack( ps, m );
@@ -43,7 +42,6 @@ namespace bts { namespace network {
         fc::datastream<char*> ds( data.data(), data.size() );
         fc::raw::pack( ds, fc::unsigned_int( T::type ) );
         fc::raw::pack( ds, m );
-        ilog( "message data size ${i}   ${data}" , ("i", data.size() )("data",data) );
      }
   };
 

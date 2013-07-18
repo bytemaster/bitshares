@@ -12,3 +12,4 @@
 #define MAX_MESSAGE_SIZE             (8*1024*1024)
 #define BITCHAT_TARGET_BPS           (128*1024)          // 128 kbit / sec target data rate
 #define BITCHAT_BANDWIDTH_WINDOW_US  (5*60*1000*1000ll)  // 5 minutes
+#define BITCHAT_INVENTORY_WINDOW_SEC (60)                // seconds to keep inventory items around

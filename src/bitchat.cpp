@@ -38,11 +38,6 @@ namespace bts
         uint16_t       notice_count; ///< how many times we have recieved an inv (this may be a better priority metric)
      };
 
-     /**
-      * Keep track of the last time we requested sorted by
-      * proof of work.
-      */
-     std::map<mini_pow, fetch_state> pending_fetch; 
 
      typedef std::shared_ptr<message_inventory> message_inventory_ptr;
 
@@ -50,14 +45,28 @@ namespace bts
      {
         public:
           bitchat_impl()
-          :del(nullptr){}
+          :del(nullptr)
+          {
+            done = false;
+          }
 
+          bool done;
           bts::network::server_ptr netw;
           fc::future<void> fetch_loop_complete;
 
-          std::unordered_map<uint64_t, bitchat_channel_ptr> chans;
-          std::map<std::string,bitchat_contact>             contacts;
-          std::map<std::string,bitchat_identity>            idents;
+          /**
+           * Keep track of the last time we requested sorted by
+           * proof of work.
+           */
+          std::map<mini_pow, fetch_state> pending_fetch; 
+
+          std::unordered_map<uint64_t, bitchat_channel_ptr>     chans;
+          std::map<std::string,bitchat_contact>                 contacts;
+          std::map<std::string,bitchat_identity>                idents;
+          std::unordered_map<fc::ecc::public_key_data,std::string>   key_to_contact;  
+          std::unordered_map<fc::ecc::public_key_data,std::string>   key_to_idents;  
+
+
           std::map<uint64_t, channel_pow_stats>             _chan_stats;
           bitchat_delegate*                                 del;
 
@@ -86,6 +95,11 @@ namespace bts
                 wlog( "broadcast on unintialized channel ${c} ?? ", ("c",c));
                 return;
              }
+
+             itr->second->msgs.clear_inventory( 
+                    fc::time_point(), 
+                    fc::time_point::now() - fc::seconds( BITCHAT_INVENTORY_WINDOW_SEC ) );
+
              auto items = itr->second->msgs.get_inventory( itr->second->last_bcast  );
 
              auto chan_cons = netw->connections_for_channel(c);
@@ -147,9 +161,9 @@ namespace bts
 
           void fetch_loop()
           {
-             while( true )
+             while( !done )
              {
-                ilog( "fetch loop... " );
+                //ilog( "fetch loop... " );
                 try
                 {
                     for( auto itr = pending_fetch.begin(); itr != pending_fetch.end(); /*++itr happens conditionally*/ )
@@ -182,7 +196,7 @@ namespace bts
                 }
                 // TODO.... use a signal / wait condition here to notify the fetch loop
                 // when to resume, polling will work for now
-                fc::usleep( fc::microseconds( 1000*500 ) );
+                fc::usleep( fc::microseconds( 1000*50 ) );
              }
           }
 
@@ -235,7 +249,7 @@ namespace bts
                   con->set_knows_broadcast( *itr );
                   if( !have_message_in_inventory( *itr, c ) )
                   {
-                     ilog( "scheduling fetch of ${i}", ("i", *itr) );
+                     //ilog( "scheduling fetch of ${i}", ("i", *itr) );
                      schedule_fetch( *itr, c );
                   }
                 }
@@ -245,7 +259,22 @@ namespace bts
           void handle_data_message( const connection_ptr& con, bitchat_message& msg, const channel_id& c )
           {
                // TODO validate difficulty...
-              // auto msg_id = msg.calculate_id();
+               auto msg_id = msg.calculate_id();
+
+               auto itr = pending_fetch.find(msg_id);
+               if( itr == pending_fetch.end() )
+               {
+                  wlog( "received unrequested message... bad, bad connection" );
+               }
+               else
+               {
+                  pending_fetch.erase(itr);
+               }
+               store_inventory( msg, c );
+
+               // TODO: move this to a separate loop so that it happens 
+               // out of band with receiving the message
+               fc::async( [=](){ broadcast_inventory(c); } );
 
                try_decrypt_msg( con, c, msg );
           }
@@ -293,6 +322,7 @@ namespace bts
 
           void try_decrypt_msg( const connection_ptr& con, const channel_id& cid, bitchat_message& m )
           {
+            try {
               // check for messages to me
               for( auto itr = idents.begin(); itr != idents.end(); ++itr )
               {
@@ -314,6 +344,8 @@ namespace bts
               {
               
               }
+              wlog( "unable to decrypt message ${m}", ("m", m.calculate_id()) );
+            } FC_RETHROW_EXCEPTIONS( warn, "attempting to decrypt message" );
           } // try_decrypt_msg
 
 
@@ -325,7 +357,29 @@ namespace bts
           void handle_data_msg( const connection_ptr& con, const channel_id& id, const bitchat_message& m )
           {
              FC_ASSERT( !m.is_encrypted() );
+             fc::datastream<const char*> ds( m.get_content().body.data(), m.get_content().body.size() );
+             fc::unsigned_int msg_type;
+             fc::raw::unpack( ds, msg_type );
 
+             if( msg_type.value == bitchat_text_msg )
+             {
+                std::string msg;
+                fc::raw::unpack( ds, msg );
+
+                auto citr = key_to_contact.find( m.get_content().from->serialize() );
+                if( citr == key_to_contact.end() )
+                {
+                    ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", to_bitchat_address(*m.get_content().from)) );
+                }
+                else
+                {
+                    ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", citr->second) );
+                }
+             }
+             else
+             {
+                wlog( "Recieved unknown message type ${t}", ("t", msg_type ) );
+             }
 
           } // handle_data_msg
 
@@ -336,7 +390,6 @@ namespace bts
            */
           void handle_message( const connection_ptr& con, const message& m )
           {
-            ilog( "..." );
              FC_ASSERT( m.data.size() > 0 );
 
              // TODO: validate message is on a channel we have subscribed to
@@ -345,7 +398,7 @@ namespace bts
             fc::datastream<const char*>  ds(m.data.data(), m.data.size() );
             fc::unsigned_int msg_type;
             fc::raw::unpack( ds, msg_type );
-            wlog( "handle message type ${t}", ("t",msg_type) );
+//            ilog( "handle message type ${t}", ("t",msg_type.value) );
 
             if( msg_type.value == data_msg )
             {
@@ -424,6 +477,7 @@ namespace bts
 
    bitchat::~bitchat()
    {
+      my->done = true;
       my->fetch_loop_complete.cancel();
 
       my->netw->unsubscribe_from_channel( channel_id(network::chat_proto,0) );
@@ -456,10 +510,11 @@ namespace bts
    void bitchat::send_message( const std::string& msg, const bitchat_contact& to, const bitchat_identity& from )
    {
       bitchat_message m;
+      m.timestamp = fc::time_point::now();
       m.body( fc::raw::pack( data_message( msg ) ) );
       m.sign( from.key );
       m.encrypt( to.key );
-      ilog( "send_message ${m}", ("m",m) );
+//      ilog( "send_message ${m}", ("m",m) );
       my->store_inventory( m, channel_id( chat_proto)  );
       my->broadcast_inventory( channel_id(chat_proto) );
    }
@@ -483,6 +538,7 @@ namespace bts
    {
        // TODO: perform some sanity checks to prevent over-riding idents??
        my->idents[id.label] = id;
+       my->key_to_idents[id.key.get_public_key().serialize()] = id.label;
    }
 
    bitchat_identity   bitchat::get_identity( const std::string& label )
@@ -499,6 +555,7 @@ namespace bts
    void               bitchat::add_contact( const bitchat_contact& c )
    {
        my->contacts[c.label] = c;
+       my->key_to_contact[c.key.serialize()] = c.label;
    }
 
    bitchat_contact    bitchat::get_contact( const std::string& label )

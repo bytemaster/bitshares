@@ -62,12 +62,12 @@ namespace bts { namespace network {
                }
                std::vector<char> tmp(len);
                sock->read( tmp.data(), len );
-               ilog( "read ${i} ${data}" ,  ("i", tmp.size() )("data",tmp) );
+             //  ilog( "read ${i} ${data}" ,  ("i", tmp.size() )("data",tmp) );
 
                message m;
                fc::datastream<const char*> ds(tmp.data(), tmp.size());
                fc::raw::unpack(ds,  m.chan );
-               ilog( "unpacked m.channel ${c}", ("c", m.chan) );
+            //   ilog( "unpacked m.channel ${c}", ("c", m.chan) );
 
                m.data.resize( ds.remaining() );
                ds.read( m.data.data(),  m.data.size() );
@@ -267,7 +267,7 @@ namespace bts { namespace network {
   {
       FC_ASSERT( packed_msg.size() % 8 == 0 );
       FC_ASSERT( !!my->sock );
-      ilog( "writing ${d} bytes", ("d", packed_msg.size() ) );
+      //ilog( "writing ${d} bytes", ("d", packed_msg.size() ) );
       uint64_t s = packed_msg.size();
 
       // TODO: populate 4 bytes of size with random data

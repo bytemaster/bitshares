@@ -87,7 +87,7 @@ void    stcp_socket::accept()
     _sock.read( (char*)&rpub, sizeof(rpub) );
 
     auto shared_secret = _priv_key.get_shared_secret( fc::ecc::public_key(rpub) );
-    ilog("shared secret ${s}", ("s", shared_secret) );
+//    ilog("shared secret ${s}", ("s", shared_secret) );
     _send_bf.start( (unsigned char*)&shared_secret, 54 );
     _recv_bf.start( (unsigned char*)&shared_secret, 54 );
 }

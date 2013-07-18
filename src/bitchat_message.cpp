@@ -106,7 +106,7 @@ bool                        bitchat_message::decrypt( const fc::ecc::private_key
 
 bool                        bitchat_message::is_encrypted()const
 {
-  return decrypted;
+  return !decrypted;
 }
 
 const bitchat_message::signed_content&       bitchat_message::get_content()const     

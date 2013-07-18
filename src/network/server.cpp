@@ -75,7 +75,7 @@ namespace bts { namespace network {
 
           virtual void on_connection_message( connection& c, const message& m )
           {
-             ilog( "received message from channel ${c} ", ("c", m.chan) ); 
+             //ilog( "received message from channel ${c} ", ("c", m.chan) ); 
              auto itr = channels.find( m.chan.id() );
              if( itr != channels.end() )
              {
