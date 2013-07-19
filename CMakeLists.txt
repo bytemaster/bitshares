@@ -43,6 +43,7 @@ include_directories( ${Boost_INCLUDE_DIR} )
 #link_directories( ${Boost_LIBRARY_DIRS} )
 
 add_subdirectory( fc )
+add_subdirectory( vendor/leveldb-1.12.0 )
 add_subdirectory( vendor/miniupnp/miniupnpc )
 #add_subdirectory( vendor/libzerocoin )
 set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_DATE_TIME_LIBRARY} ${Boost_CHRONO_LIBRARY} ${ALL_OPENSSL_LIBRARIES})
