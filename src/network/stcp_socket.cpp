@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <fc/log/logger.hpp>
 #include <fc/network/ip.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace bts { namespace network {
 
@@ -25,7 +26,7 @@ void     stcp_socket::connect_to( const fc::ip::endpoint& ep )
     _sock.read( (char*)&rpub, sizeof(rpub) );
 
     auto shared_secret = _priv_key.get_shared_secret( rpub );
-    ilog("shared secret ${s}", ("s", shared_secret) );
+//    ilog("shared secret ${s}", ("s", shared_secret) );
     _send_bf.start( (unsigned char*)&shared_secret, 54 );
     _recv_bf.start( (unsigned char*)&shared_secret, 54 );
 }
@@ -74,7 +75,10 @@ void     stcp_socket::flush()
 
 void     stcp_socket::close()
 {
+  try 
+  {
    _sock.close();
+  }FC_RETHROW_EXCEPTIONS( warn, "error closing stcp socket" );
 }
 
 void    stcp_socket::accept()

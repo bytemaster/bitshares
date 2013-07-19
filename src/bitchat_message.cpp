@@ -66,6 +66,12 @@ void                        bitchat_message::encrypt(const fc::ecc::public_key& 
     bf.encrypt( (unsigned char*)data.data(), data.size() );
 
     decrypted = false;
+    this->to = nullptr;
+}
+
+fc::optional<fc::ecc::private_key> bitchat_message::get_decryption_key()const
+{
+  return to;
 }
 
 /**
@@ -84,6 +90,7 @@ bool                        bitchat_message::decrypt( const fc::ecc::private_key
     auto check  = fc::sha1::hash( bf_key )._hash[0];
     if( check != dh_check ) 
     {
+      to = nullptr;
       return false;
     }
     
@@ -99,7 +106,8 @@ bool                        bitchat_message::decrypt( const fc::ecc::private_key
     auto digest = enc.result();
 
     private_content->from = fc::ecc::public_key( private_content->from_sig, digest );
-
+    
+    to = k; 
     return decrypted = true;
   } FC_RETHROW_EXCEPTIONS( warn, "error decrypting message" );
 }

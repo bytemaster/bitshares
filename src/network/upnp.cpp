@@ -43,6 +43,8 @@ upnp_service::~upnp_service()
       my->upnp_thread.quit();
       my->map_port_complete.wait();
   } 
+  catch ( const fc::canceled_exception& e )
+  {} // expected
   catch ( const fc::exception& e )
   {
       wlog( "unexpected exception\n ${e}", ("e", e.to_detail_string() ) );
@@ -65,11 +67,14 @@ void upnp_service::map_port( uint16_t local_port )
       devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, &error);
 
       struct UPNPUrls urls;
+      memset( &urls, 0, sizeof(urls) );
       struct IGDdatas data;
+      memset( &data, 0, sizeof(data) );
       int r;
       
       r = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
 
+      bool port_mapping_added = false;
 
 
        if (r == 1)
@@ -102,6 +107,7 @@ void upnp_service::map_port( uint16_t local_port )
                    r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
                                        port.c_str(), port.c_str(), lanaddr, strDesc.c_str(), "TCP", 0, "0");
        
+                   port_mapping_added = true;
                    if(r!=UPNPCOMMAND_SUCCESS)
                        printf("AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
                            port.c_str(), port.c_str(), lanaddr, r, strupnperror(r));
@@ -113,17 +119,22 @@ void upnp_service::map_port( uint16_t local_port )
            }
      //      catch (boost::thread_interrupted)
            {
-               r = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port.c_str(), "TCP", 0);
-               printf("UPNP_DeletePortMapping() returned : %d\n", r);
-               freeUPNPDevlist(devlist); devlist = 0;
-               FreeUPNPUrls(&urls);
-               throw;
+               if( port_mapping_added )
+               {
+                 r = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port.c_str(), "TCP", 0);
+                 ilog("UPNP_DeletePortMapping() returned : ${r}", ("r",r));
+                 freeUPNPDevlist(devlist); devlist = 0;
+                 FreeUPNPUrls(&urls);
+               }
+      //         throw;
            }
        } else {
            printf("No valid UPnP IGDs found\n");
            freeUPNPDevlist(devlist); devlist = 0;
            if (r != 0)
+           {
                FreeUPNPUrls(&urls);
+           }
        }
   });
 }

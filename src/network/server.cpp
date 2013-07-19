@@ -86,14 +86,16 @@ namespace bts { namespace network {
 
           virtual void on_connection_disconnected( connection& c )
           {
-             ilog( "cleaning up connection after disconnect" );
-             connections.erase( c.get_socket()->get_socket().remote_endpoint() );
+            try {
+             ilog( "cleaning up connection after disconnect ${e}", ("e", c.remote_endpoint()) );
+             connections.erase( c.remote_endpoint() );
              
              auto cptr = c.shared_from_this();
              for( auto itr = connections_by_channel.begin(); itr != connections_by_channel.end(); ++itr )
              {
                 itr->second.erase( cptr );
              }
+            } FC_RETHROW_EXCEPTIONS( warn, "error thrown handling disconnect" );
           }
 
           void update_connection_channel_index( const config_msg& m, connection_ptr& con )

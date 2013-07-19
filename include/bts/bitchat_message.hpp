@@ -60,6 +60,8 @@ namespace bts {
         const signed_content&       get_content()const;     
         void                        set_content(const signed_content& c);
 
+        fc::optional<fc::ecc::private_key> get_decryption_key()const;
+
         uint16_t                    nonce; ///< increment timestamp after 63K tests
         fc::time_point              timestamp;
         fc::ecc::public_key         dh_key;
@@ -68,8 +70,9 @@ namespace bts {
 
         private:
         /** transient state of data vector */
-        bool                          decrypted;
-        fc::optional<signed_content>  private_content;
+        bool                                decrypted;
+        fc::optional<signed_content>        private_content;
+        fc::optional<fc::ecc::private_key>  to; // key that decrypted the message
 
     };
 

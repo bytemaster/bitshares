@@ -63,8 +63,8 @@ namespace bts
           std::unordered_map<uint64_t, bitchat_channel_ptr>     chans;
           std::map<std::string,bitchat_contact>                 contacts;
           std::map<std::string,bitchat_identity>                idents;
-          std::unordered_map<fc::ecc::public_key_data,std::string>   key_to_contact;  
-          std::unordered_map<fc::ecc::public_key_data,std::string>   key_to_idents;  
+          std::unordered_map<std::string,std::string>   key_to_contact;  
+          std::unordered_map<std::string,std::string>   key_to_idents;  
 
 
           std::map<uint64_t, channel_pow_stats>             _chan_stats;
@@ -303,7 +303,7 @@ namespace bts
                // TODO: we need to prevent abuse of this message to DOS the network... perhaps
                //       by putting a bandwidth limit on each connection to ensure it stays
                //       in compliance and is not abusing the network.
-               ilog( "handle get_data_message" );
+               //ilog( "handle get_data_message" );
 
                // lookup and send the data async
                fc::async( [this,con,msg,chan]() {
@@ -366,14 +366,37 @@ namespace bts
                 std::string msg;
                 fc::raw::unpack( ds, msg );
 
-                auto citr = key_to_contact.find( m.get_content().from->serialize() );
-                if( citr == key_to_contact.end() )
+                auto citr = key_to_contact.find( to_bitchat_address(*m.get_content().from) );
+
+                bitchat_contact_status from;
+
+                if( citr != key_to_contact.end() )
                 {
-                    ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", to_bitchat_address(*m.get_content().from)) );
+                    from.ident = contacts[ citr->second ];
+                    //ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", to_bitchat_address(*m.get_content().from)) );
                 }
                 else
                 {
-                    ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", citr->second) );
+                    from.ident.key = *m.get_content().from;
+                    from.ident.label = to_bitchat_address( from.ident.key );
+//                    ilog( "Received message '${msg}' from ${from}", ("msg", msg )("from", citr->second) );
+                }
+
+                bitchat_identity to;
+                auto iitr = key_to_idents.find( to_bitchat_address(m.get_decryption_key()->get_public_key()) );
+                if( iitr != key_to_idents.end() )
+                {
+                    to = idents[iitr->second]; 
+                }
+                else
+                {
+                    to.label = to_bitchat_address(m.get_decryption_key()->get_public_key());
+                    to.key =  *m.get_decryption_key();
+                }
+
+                if( del )
+                {
+                    del->received_message( msg, to, from );
                 }
              }
              else
@@ -537,8 +560,9 @@ namespace bts
    void               bitchat::add_identity( const bitchat_identity& id )
    {
        // TODO: perform some sanity checks to prevent over-riding idents??
+       ilog( "${id}", ("id",id) );
        my->idents[id.label] = id;
-       my->key_to_idents[id.key.get_public_key().serialize()] = id.label;
+       my->key_to_idents[to_bitchat_address(id.key.get_public_key())] = id.label;
    }
 
    bitchat_identity   bitchat::get_identity( const std::string& label )
@@ -554,8 +578,9 @@ namespace bts
 
    void               bitchat::add_contact( const bitchat_contact& c )
    {
+       ilog( "${c}", ("c",c) );
        my->contacts[c.label] = c;
-       my->key_to_contact[c.key.serialize()] = c.label;
+       my->key_to_contact[to_bitchat_address(c.key)] = c.label;
    }
 
    bitchat_contact    bitchat::get_contact( const std::string& label )

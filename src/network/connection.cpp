@@ -25,6 +25,7 @@ namespace bts { namespace network {
           :self(s),con_del(nullptr){}
           connection&          self;
           stcp_socket_ptr      sock;
+          fc::ip::endpoint     remote_ep;
           connection_delegate* con_del;
 
           std::unordered_map<mini_pow,fc::time_point> known_inv;
@@ -134,7 +135,7 @@ namespace bts { namespace network {
               }
               else
               {
-                wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+          //      wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
               }
             }
             catch ( const fc::eof_exception& e )
@@ -145,21 +146,25 @@ namespace bts { namespace network {
               }
               else
               {
-                wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+          //      wlog( "disconnected ${e}", ("e", e.to_detail_string() ) );
               }
             }
-            catch ( const fc::exception& e )
+            catch ( fc::exception& er )
             {
               if( con_del )
               {
                 con_del->on_connection_disconnected( self );
-                elog( "disconnected" );
+        //        elog( "disconnected ${er}", ("er", er.to_detail_string() ) );
               }
               else
               {
-                elog( "disconnected ${e}", ("e", e.to_detail_string() ) );
+           //     elog( "disconnected ${e}", ("e", er.to_detail_string() ) );
               }
-              throw;
+              FC_RETHROW_EXCEPTION( er, warn, "disconnected ${e}", ("e", er.to_detail_string() ) );
+            }
+            catch ( ... )
+            {
+              FC_THROW_EXCEPTION( unhandled_exception, "disconnected: {e}", ("e", fc::except_str() ) );
             }
           }
      };
@@ -181,7 +186,12 @@ namespace bts { namespace network {
   connection::~connection()
   {
     try {
-      close();
+        // delegate does not get called from destructor...
+        // because shared_from_this() will return nullptr 
+        // and cause us all kinds of grief
+        my->con_del = nullptr; 
+
+        close();
       if( my->read_loop_complete.valid() )
       {
         my->read_loop_complete.wait();
@@ -197,7 +207,7 @@ namespace bts { namespace network {
     }
     catch ( ... )
     {
-      elog( "unhandled exception on close" );   
+      elog( "unhandled exception on close ${e}", ("e", fc::except_str()) );   
     }
   }
   stcp_socket_ptr connection::get_socket()const
@@ -213,10 +223,12 @@ namespace bts { namespace network {
 
   void connection::close()
   {
-     if( my->sock )
-     {
-       my->sock->close();
-     }
+     try {
+         if( my->sock )
+         {
+           my->sock->close();
+         }
+     } FC_RETHROW_EXCEPTIONS( warn, "exception thrown while closing socket" );
   }
 
   void connection::connect( const std::string& host_port, const config_msg& m )
@@ -230,6 +242,7 @@ namespace bts { namespace network {
          {
             my->sock = std::make_shared<stcp_socket>();
             my->sock->connect_to(*itr); 
+            my->remote_ep = remote_endpoint();
             my->exchange_config( m ); 
             ilog( "    connected to ${ep} with config ${conf}", ("ep", *itr)("conf",remote_config())  );
             my->read_loop_complete = fc::async( [=](){ my->read_loop(); } );
@@ -244,6 +257,7 @@ namespace bts { namespace network {
   }
   void connection::start()
   {
+     my->remote_ep = remote_endpoint();
      my->read_loop_complete = fc::async( [=](){ my->read_loop(); } );
   }
 
@@ -319,7 +333,11 @@ namespace bts { namespace network {
 
   fc::ip::endpoint connection::remote_endpoint()const 
   {
-    return get_socket()->get_socket().remote_endpoint();
+    if( get_socket()->get_socket().is_open() )
+    {
+        return my->remote_ep = get_socket()->get_socket().remote_endpoint();
+    }
+    return my->remote_ep;
   }
 
 
