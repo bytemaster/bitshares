@@ -19,5 +19,21 @@ namespace bts {
       memcpy( p.data, bige.data(), sizeof(p) );
       return p;
   }
+  fc::bigint     to_bigint( const mini_pow& p )
+  {
+      return fc::bigint( p.data, sizeof(p) );
+  }
+    
+  mini_pow       to_mini_pow( const fc::bigint& i )
+  {
+      std::vector<char> bige = i;
+      mini_pow p;
+      if( bige.size() < sizeof(p) )
+      {
+          memset( p.data, 0, sizeof(p)-bige.size() );
+      }
+      memcpy( p.data + sizeof(p)-bige.size(), bige.data(), std::min<size_t>(bige.size(),sizeof(p)) );
+      return p;
+  }
 
 }

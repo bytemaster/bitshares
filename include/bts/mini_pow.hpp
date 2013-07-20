@@ -1,5 +1,6 @@
 #pragma once
 #include <fc/array.hpp>
+#include <fc/crypto/bigint.hpp>
 
 namespace bts 
 {
@@ -37,7 +38,7 @@ namespace bts
    *  The probability of finding a collision when the leading byte is 0,
    *  is equal to the probability of finding a collision on SHA256 + 72 bits
    *
-   *  If the first byte is 255 then the hash difficulty is essentially
+   *  If the first byte is 255 then the hash security is essentially
    *  double SHA512 truncated to 72 bits. 
    **/
   typedef fc::array<char,10>  mini_pow;
@@ -58,5 +59,12 @@ namespace bts
    *
    */
   mini_pow   mini_pow_hash( const char* data, size_t len );
+
+  /**
+   *  Converts the POW to a bigint so that operations may
+   *  be performed on it.
+   */
+  fc::bigint     to_bigint( const mini_pow& p );
+  mini_pow       to_mini_pow( const fc::bigint& i );
 
 } // namespace bts
