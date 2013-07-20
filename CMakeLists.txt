@@ -36,7 +36,6 @@ FIND_PACKAGE(Boost 1.51 COMPONENTS thread date_time system filesystem program_op
 include_directories( ${CMAKE_SOURCE_DIR}/fc/include )
 include_directories( ${CMAKE_SOURCE_DIR}/include )
 include_directories( ${CMAKE_SOURCE_DIR}/fc/vendor/boost_1.51/include )
-include_directories( ${CMAKE_SOURCE_DIR}/vendor/cityhash-1.0.3/src )
 include_directories( ${CMAKE_SOURCE_DIR}/vendor/SFMT-src-1.4 )
 include_directories( ${CMAKE_SOURCE_DIR}/vendor/leveldb-1.12.0/include )
 include_directories( ${Boost_INCLUDE_DIR} )
@@ -66,9 +65,6 @@ set( sources
      src/bitname/name_miner.cpp
      src/bitname/name_block.cpp
      src/bitname/name_db.cpp
-
-     vendor/cityhash-1.0.3/src/city.cc
-     vendor/cityhash-1.0.3/src/crc.cpp
 
      vendor/SFMT-src-1.4/SFMT.c
      src/proof_of_work.cpp )

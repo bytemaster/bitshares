@@ -1,9 +1,8 @@
 #include <bts/proof_of_work.hpp>
+#include <bts/mini_pow.hpp>
 #include <fc/crypto/sha512.hpp>
-#include <fc/crypto/blowfish.hpp>
-#include <fc/thread/thread.hpp>
+#include <fc/crypto/city.hpp>
 #include <string.h>
-#include <city.h>
 #include <SFMT.h>
 
 #include <fc/io/raw.hpp>
@@ -12,12 +11,12 @@
 
 #define MB128 (128*1024*1024)
 
-typedef std::pair<uint64, uint64> uint128;
-uint128 CityHashCrc128(const char *s, size_t len);
-fc::sha1 proof_of_work( const fc::sha256& in)
+namespace bts  {
+
+mini_pow proof_of_work( const fc::sha256& in)
 {
    unsigned char* buf = new unsigned char[MB128];
-   fc::sha1 out;
+   mini_pow out;
    try {
      out = proof_of_work( in, buf );
    } catch ( ... )
@@ -58,7 +57,7 @@ fc::sha1 proof_of_work( const fc::sha256& in)
  *  instruction alone is likely to give the CPU an order of magnitude advantage
  *  over the GPUs.
  */
-fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
+mini_pow proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
 {
    const uint64_t  s = MB128/sizeof(uint64_t);
    uint64_t* buf = (uint64_t*)buffer_128m;
@@ -78,16 +77,9 @@ fc::sha1 proof_of_work( const fc::sha256& in, unsigned char* buffer_128m )
       data = tmp * (x+17);
    }
 
-   auto  out  = CityHashCrc128( (char*)buffer_128m, MB128 ); 
-   return fc::sha1::hash( (char*)&out, sizeof(out) );
+   auto  out  = fc::city_hash_crc_128( (char*)buffer_128m, MB128 ); 
+   return mini_pow_hash( (char*)&out, sizeof(out) );
 }
 
 
-/*
-fc::sha1 proof_of_work( const block_header& h, unsigned char* buffer_128m )
-{
-    auto data = fc::raw::pack(h);
-    return proof_of_work( fc::sha256::hash( data.data(), data.size() ), buffer_128m );
-}
-
-*/
+}  // namespace bts

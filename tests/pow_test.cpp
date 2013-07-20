@@ -2,6 +2,7 @@
 #include <string.h>
 #include <fc/io/stdio.hpp>
 #include <fc/thread/thread.hpp>
+#include <fc/log/logger.hpp>
 
 int main( int argc, char** argv )
 {
@@ -22,7 +23,7 @@ int main( int argc, char** argv )
        for( int x = 0; x < 25; ++x )
        {
          ((uint16_t*)&tin)[i]++;
-         proof_of_work( in, tmp );
+         bts::proof_of_work( in, tmp );
        }
        delete[] tmp;
      });
@@ -36,8 +37,8 @@ int main( int argc, char** argv )
    fc::cerr<<  (200.0 / ((end-start).count() / 1000000.0))  <<  " hash / sec\n";
 
    unsigned char* tmp     = new unsigned char[128*1024*1024+512];
-   auto out = proof_of_work( in, tmp );
-   fc::cerr<<fc::string(out)<<"\n";
+   auto out = bts::proof_of_work( in, tmp );
+   ilog( "out: ${out}", ("out",out));
 
    delete[] tmp;
    return -1;
