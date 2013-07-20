@@ -153,6 +153,7 @@ namespace bts { namespace bitname {
 
     name_reg_block name_db::fetch_block( const mini_pow& block_id )
     {
+      try {
         std::string value;
         ldb::Slice id( block_id.data, sizeof(block_id) );
         auto status = my->name_trx_db->Get( ldb::ReadOptions(), id, &value );
@@ -165,6 +166,44 @@ namespace bts { namespace bitname {
         fc::datastream<const char*> ds( value.c_str(), value.size() );
         fc::raw::unpack( ds, blk );
         return blk;
+      } FC_RETHROW_EXCEPTIONS( warn, "error fetching block id ${id}", ("id",block_id) );
+    }
+
+    void name_db::remove_trx( const mini_pow& trx_id )
+    {
+        try
+        {
+            auto nreg = fetch_trx( trx_id );
+            ldb::Slice regname( nreg.name );
+            ldb::Slice id( trx_id.data, sizeof(trx_id) );
+
+            auto status = my->name_trx_db->Delete( ldb::WriteOptions(), id );
+            if( !status.ok() )
+            {
+               FC_THROW_EXCEPTION( exception, "database error: ${msg}", ("msg", status.ToString() ) );
+            }
+            status = my->name_index_db->Delete( ldb::WriteOptions(), regname );
+            if( !status.ok() )
+            {
+               FC_THROW_EXCEPTION( exception, "database error: ${msg}", ("msg", status.ToString() ) );
+            }
+        }FC_RETHROW_EXCEPTIONS( warn, "error removing name trx ${trx_id}", ("trx_id",trx_id) );
+    }
+
+    void name_db::remove_block( const mini_pow& block_id )
+    {
+        try
+        {
+            remove_trx( block_id );
+            
+            ldb::Slice id( block_id.data, sizeof(block_id) );
+
+            auto status = my->name_block_db->Delete( ldb::WriteOptions(), id );
+            if( !status.ok() )
+            {
+               FC_THROW_EXCEPTION( exception, "database error: ${msg}", ("msg", status.ToString() ) );
+            }
+        }FC_RETHROW_EXCEPTIONS( warn, "error removing name block ${block_id}", ("block_id",block_id) );
     }
 
 

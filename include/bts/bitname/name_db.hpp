@@ -25,6 +25,9 @@ namespace bts { namespace bitname {
         name_reg_trx   fetch_trx( const mini_pow& trx_id );
         name_reg_block fetch_block( const mini_pow& block_id );
 
+        void           remove_trx( const mini_pow& trx_id );
+        void           remove_block( const mini_pow& block_id );
+
       private:
         std::unique_ptr<detail::name_db_impl> my;
   };
