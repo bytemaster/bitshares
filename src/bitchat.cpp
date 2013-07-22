@@ -418,34 +418,34 @@ namespace bts
              // TODO: validate message is on a channel we have subscribed to
 
 
-            fc::datastream<const char*>  ds(m.data.data(), m.data.size() );
-            fc::unsigned_int msg_type;
-            fc::raw::unpack( ds, msg_type );
-//            ilog( "handle message type ${t}", ("t",msg_type.value) );
-
-            if( msg_type.value == data_msg )
-            {
-               bitchat_message msg;
-               fc::raw::unpack( ds, msg );
-               handle_data_message( con, msg, m.chan );
-            }
-            else if( msg_type.value == inventory_msg )
-            {
-               inv_message msg;
-               fc::raw::unpack( ds, msg );
-               handle_inv_message( con, msg, m.chan );
-            }
-            else if( msg_type.value == get_data_msg )
-            {
-               get_data_message msg;
-               fc::raw::unpack( ds, msg );
-               handle_get_data_message( con, msg, m.chan );
-            }
-            else
-            {
-              wlog( "Unknown message type ${i}", ("i", msg_type) );
-              FC_THROW_EXCEPTION( exception, "Unknown message type ${i}", ("i", msg_type) );
-            }
+             fc::datastream<const char*>  ds(m.data.data(), m.data.size() );
+             fc::unsigned_int msg_type;
+             fc::raw::unpack( ds, msg_type );
+//             ilog( "handle message type ${t}", ("t",msg_type.value) );
+            
+             if( msg_type.value == data_msg )
+             {
+                bitchat_message msg;
+                fc::raw::unpack( ds, msg );
+                handle_data_message( con, msg, m.chan );
+             }
+             else if( msg_type.value == inventory_msg )
+             {
+                inv_message msg;
+                fc::raw::unpack( ds, msg );
+                handle_inv_message( con, msg, m.chan );
+             }
+             else if( msg_type.value == get_data_msg )
+             {
+                get_data_message msg;
+                fc::raw::unpack( ds, msg );
+                handle_get_data_message( con, msg, m.chan );
+             }
+             else
+             {
+               wlog( "Unknown message type ${i}", ("i", msg_type) );
+               FC_THROW_EXCEPTION( exception, "Unknown message type ${i}", ("i", msg_type) );
+             }
 
           } // handle_message(...)
 

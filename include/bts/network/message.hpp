@@ -15,8 +15,7 @@ namespace bts { namespace network {
      known_hosts  = 2,
      error_report = 3,
      subscribe    = 4,
-     unsubscribe  = 5,
-     mail         = 6, ///< bitmessage
+     unsubscribe  = 5
   };
 
   struct message
@@ -65,7 +64,6 @@ namespace bts { namespace network {
      fc::time_point   last_com;
   };
 
-
   struct known_hosts_msg
   {
       enum type_enum { type = message_code::known_hosts };
@@ -109,7 +107,6 @@ FC_REFLECT_ENUM( bts::network::message_code,
   (error_report)
   (subscribe)
   (unsubscribe)
-  (mail)
   )
 FC_REFLECT( bts::network::host,             (ep)(last_com) )
 FC_REFLECT( bts::network::known_hosts_msg,  (hosts) )

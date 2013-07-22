@@ -2,6 +2,7 @@
 #include <bts/network/stcp_socket.hpp>
 #include <bts/network/message.hpp>
 #include <bts/mini_pow.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace bts { namespace network {
   
@@ -22,6 +23,30 @@ namespace bts { namespace network {
         virtual void on_connection_disconnected( connection& c ){}
    };
 
+   /**
+    * Common base class for channel data associated with a specific connection.
+    *
+    * Many channels need to maintain per-connection data to track broadcast
+    * state and potential abuses.  The connection object maintains a mapping from
+    * channel id to channel data.  Each channel that needs custom data stored with
+    * the connection should derive a data class from channel_data and then
+    * use dynamic_cast to recover the data.
+    */
+   class channel_data : public std::enable_shared_from_this<channel_data>
+   {
+      public:
+          virtual ~channel_data(){}
+
+          template<typename T>
+          T& as()
+          {
+              T* p = dynamic_cast<T*>(this);
+              FC_ASSERT( p != nullptr );
+              return *p;
+          }
+   };
+   typedef std::shared_ptr<channel_data> channel_data_ptr;
+
 
    /**
     *  Manages a connection to a remote p2p node.
@@ -33,8 +58,18 @@ namespace bts { namespace network {
         connection();
         ~connection();
    
-        stcp_socket_ptr get_socket()const;
+        stcp_socket_ptr  get_socket()const;
         fc::ip::endpoint remote_endpoint()const;
+        
+        /**
+         *  @return nullptr if no data has been assigned to c
+         */
+        channel_data_ptr get_channel_data( const channel_id& c )const;
+
+        /**
+         *  Sets data associated with c and replaces any existing data.
+         */
+        void             set_channel_data( const channel_id& c, const channel_data_ptr& d );
 
         /**
          *  Each connection needs to track which broadcasts it

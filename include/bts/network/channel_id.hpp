@@ -9,7 +9,8 @@ namespace bts { namespace network {
      null_proto = 0, ///< used for null / padding  
      peer_proto = 1, ///< used for discovery / configuration
      chat_proto = 2, ///< used for chat messages
-     mail_proto = 3  ///< used for email messages
+     name_proto = 3, ///< used for bitname messages
+     mail_proto = 4  ///< used for email messages
   };
 
   struct channel_id

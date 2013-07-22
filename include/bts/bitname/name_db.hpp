@@ -7,7 +7,8 @@ namespace bts { namespace bitname {
   namespace detail { class name_db_impl; }
 
   /**
-   *  Stores only the valid set of registered names.
+   *  Stores the valid set of blocks and maintains an
+   *  index from name_hash to block/index location.
    */
   class name_db
   {
@@ -18,18 +19,28 @@ namespace bts { namespace bitname {
         void open( const fc::path& dbdir, bool create = true );
         void close();
 
-        void store( const name_reg_block& b );
-        void store( const name_reg_trx& b );
+        void store( const name_block& b );
 
-        name_reg_trx   fetch_trx( const std::string& name );
-        name_reg_trx   fetch_trx( const mini_pow& trx_id );
-        name_reg_block fetch_block( const mini_pow& block_id );
+        struct name_location 
+        {
+            name_location( const mini_pow& i, uint16_t n )
+            :block_id(i),trx_num(n){}
+            name_location():trx_num(0){}
 
-        void           remove_trx( const mini_pow& trx_id );
-        void           remove_block( const mini_pow& block_id );
+            mini_pow block_id;
+            uint16_t trx_num;
+        };
+
+        name_location   find_name( uint64_t name_hash );
+        name_header     fetch_trx( uint64_t name_hash );
+        name_block      fetch_block( const mini_pow& block_id );
+
+        void            remove_block( const mini_pow& block_id );
 
       private:
         std::unique_ptr<detail::name_db_impl> my;
   };
 
 } }
+
+FC_REFLECT( bts::bitname::name_db::name_location, (block_id)(trx_num) )

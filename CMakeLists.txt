@@ -65,6 +65,8 @@ set( sources
      src/bitname/name_miner.cpp
      src/bitname/name_block.cpp
      src/bitname/name_db.cpp
+     src/bitname/name_channel.cpp
+     src/bitname/name_hash.cpp
 
      vendor/SFMT-src-1.4/SFMT.c
      src/proof_of_work.cpp )

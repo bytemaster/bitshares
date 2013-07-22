@@ -1,4 +1,5 @@
 #include <bts/bitname/name_miner.hpp>
+#include <bts/bitname/name_hash.hpp>
 #include <bts/config.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/io/raw.hpp>
@@ -27,7 +28,7 @@ namespace bts { namespace bitname {
         fc::future<void>      _mining_complete[DEFAULT_MINING_THREADS];
 
         float                 _cur_effort;
-        name_reg_block        _cur_block;
+        name_block            _cur_block;
 
         uint64_t              _block_ver;
 
@@ -37,10 +38,10 @@ namespace bts { namespace bitname {
         /**
          *  Called from mining thread
          */
-        void start_mining( name_reg_block b, uint32_t thread_num, uint64_t ver )
+        void start_mining( name_block b, uint32_t thread_num, uint64_t ver )
         {
             // calculate temp buffer
-            std::vector<char> buf = fc::raw::pack( (const name_reg_trx&)b );
+            std::vector<char> buf = fc::raw::pack( (const name_header&)b );
             uint32_t* nonce = (uint32_t*)buf.data();
             uint32_t* ts    = nonce + 1;
             *nonce = thread_num;
@@ -129,20 +130,16 @@ namespace bts { namespace bitname {
       my->start_new_block();
   }
 
-  void name_miner::add_name_reg( const name_reg_trx& t )
+  void name_miner::add_name_trx( const name_trx& t )
   {
-      if( t.prev != my->_cur_block.prev )
-      {
-        FC_THROW_EXCEPTION( exception, "name trx is not valid for the current block" );
-      }
-      my->_cur_block.registered_names.insert( t.id() );
+      my->_cur_block.registered_names.push_back(t);
       my->start_new_block();
   }
 
   void name_miner::set_name( const std::string& name, const fc::ecc::public_key& k )
   {
      FC_ASSERT( name.size() < 32 );
-     my->_cur_block.name = name;
+     my->_cur_block.name_hash = bts::bitname::name_hash(name);
   }
 
 

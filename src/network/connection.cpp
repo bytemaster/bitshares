@@ -28,7 +28,8 @@ namespace bts { namespace network {
           fc::ip::endpoint     remote_ep;
           connection_delegate* con_del;
 
-          std::unordered_map<mini_pow,fc::time_point> known_inv;
+          std::unordered_map<mini_pow,fc::time_point>   known_inv;
+          std::unordered_map<uint64_t,channel_data_ptr> chan_data;
 
           /** used to ensure that messages are written completely */
           fc::mutex              write_lock;
@@ -301,6 +302,16 @@ namespace bts { namespace network {
   config_msg connection::remote_config()const
   {
       return my->remote_config;
+  }
+
+  void connection::set_channel_data( const channel_id& cid, const channel_data_ptr& d )
+  {
+     my->chan_data[cid.id()] = d;
+  }
+
+  channel_data_ptr connection::get_channel_data( const channel_id& cid )const
+  {
+     return my->chan_data[cid.id()];
   }
 
 

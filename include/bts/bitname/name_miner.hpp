@@ -7,7 +7,7 @@ namespace bts { namespace bitname {
     {
        public:
           virtual ~name_miner_delegate(){}
-          virtual void found_name_block( const name_reg_block& t ){};
+          virtual void found_name_block( const name_block& t ){};
          
     };
 
@@ -51,7 +51,7 @@ namespace bts { namespace bitname {
            *  in the queue, the lowest hash will win.  Recalculates the
            *  merkle root.
            */
-          void add_name_reg( const name_reg_trx& );
+          void add_name_trx( const name_trx& );
        private:
           std::unique_ptr<detail::name_miner_impl> my;
     };
