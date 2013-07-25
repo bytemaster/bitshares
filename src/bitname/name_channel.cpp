@@ -1,4 +1,5 @@
 #include <bts/bitname/name_channel.hpp>
+#include <bts/bitname/name_messages.hpp>
 #include <bts/bitname/name_db.hpp>
 #include <bts/network/server.hpp>
 #include <bts/network/channel.hpp>
@@ -11,17 +12,17 @@ namespace bts { namespace bitname {
   using namespace bts::network;
   namespace detail 
   { 
-    class name_channel_impl
+    class name_channel_impl : public bts::network::channel
     {
        public:
           name_channel_impl()
           :del(nullptr){}
 
-          name_channel_delegate*    del;
-          bts::network::server_ptr  netw;
-          network::channel_ptr      chan;
+          name_channel_delegate*       del;
+          bts::peer::peer_channel_ptr  peers;
+          network::channel_ptr         chan;
                                     
-          name_db                   ndb;
+          name_db                      ndb;
 
           std::shared_ptr<bts::network::channel> chan_handler;
 
@@ -122,51 +123,31 @@ namespace bts { namespace bitname {
          }
 
 
+
     };
 
-    class bitname_channel : public bts::network::channel
-    {
-        public:
-         bitname_channel( name_channel_impl* s )
-         :self(s) { }
-      
-         void handle_message( const connection_ptr& con, const message& m )
-         {
-            if( self ) 
-            {   
-              try
-              {
-                self->handle_message( con, m );
-              } 
-              catch ( const fc::exception& e )
-              {
-                wlog( "unexpected exception handling message\n ${e}", ("e", e.to_detail_string()));
-              }
-            } 
-            else
-            {
-                FC_THROW_EXCEPTION( exception, "chat client no longer subscribed to channel" );
-            }
-         }
-         name_channel_impl* self;
-    };
-  }
+  } // namespace detail
 
-  name_channel::name_channel( const bts::network::server_ptr& n )
+  name_channel::name_channel( const bts::peer::peer_channel_ptr& n )
   :my( new detail::name_channel_impl() )
   {
-     my->netw = n;
-     my->chan = std::make_shared<detail::bitname_channel>(my.get());
-     my->netw->subscribe_to_channel( channel_id(network::name_proto), my->chan );
+     my->peers = n;
+     my->peers->subscribe_to_channel( channel_id(network::name_proto), my );
   }
 
-  name_channel::~name_channel() { } 
+  name_channel::~name_channel() 
+  { 
+     my->peers->unsubscribe_from_channel( channel_id(network::name_proto) );
+  } 
 
   void name_channel::configure( const name_channel::config& c )
   {
       my->ndb.open( c.name_db_dir, true/*create*/ );
 
-      // connect to the network and attempt to download the chain...
+      // TODO: connect to the network and attempt to download the chain...
+      //      *  what if no peers on on the name channel ??  * 
+      //         I guess when I do connect to a peer on this channel they will
+      //         learn that I am subscribed to this channel... 
   }
   void name_channel::set_delegate( name_channel_delegate* d )
   {

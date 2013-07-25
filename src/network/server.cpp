@@ -189,16 +189,7 @@ namespace bts { namespace network {
 
   void server::configure( const server::config& c )
   {
-      // TODO: should I check to make sure we haven't already been configured?
       my->cfg = c;
-      /*
-      for( uint32_t i = 0; i < c.bootstrap_endpoints.size(); ++i )
-      {
-         db::peer::record r;
-         r.contact = fc::ip::endpoint::from_string(c.bootstrap_endpoints[i]);
-         my->peerdb->store( r );
-      }
-      */
 
       ilog( "listening for stcp connections on port ${p}", ("p",c.port) );
       my->tcp_serv.listen( c.port );
@@ -208,14 +199,22 @@ namespace bts { namespace network {
 
 
   std::vector<connection_ptr> server::get_connections()const
-  {
-    return std::vector<connection_ptr>(); //my->connections;
+  { 
+      std::vector<connection_ptr>  cons; 
+      cons.reserve( my->connections.size() );
+      for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr )
+      {
+        cons.push_back(itr->second);
+      }
+      return cons;
   }
-
-
-  
-
-
+  void server::broadcast( const message& m )
+  {
+      for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr )
+      {
+        itr->second->send(m);
+      }
+  }
 
 
    void server::close()

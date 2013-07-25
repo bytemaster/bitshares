@@ -92,11 +92,6 @@ namespace bts { namespace network {
          */
         void configure( const config& c );
 
-        /**
-         * Sends message to all connections subscribed to
-         * the channel specified in the message.
-         */
-        void broadcast( const message& m );
 
         /**
          *  @return a set of connections that are subscribed to a particular channel, prioritized
@@ -110,6 +105,8 @@ namespace bts { namespace network {
          */
         std::vector<connection_ptr> get_connections()const;
 
+        /** send the message to all connected peers */
+        void broadcast( const message& m );
       private:
         std::unique_ptr<detail::server_impl> my;
   };
