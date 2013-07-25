@@ -8,7 +8,11 @@ namespace bts {
 
   mini_pow mini_pow_hash( const char* data, size_t len )
   {
-      auto h1 = fc::sha512::hash( data, len );
+      return mini_pow_hash( fc::sha512::hash( data, len ) );
+  }
+
+  mini_pow mini_pow_hash( const fc::sha512& h1 )
+  {
       auto h2 = fc::sha512::hash( (char*)&h1, sizeof(h1) );
       mini_pow p;
       fc::bigint  h3( (char*)&h2, sizeof(h2) );

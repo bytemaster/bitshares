@@ -22,7 +22,6 @@ namespace bts { namespace network {
      public:
        virtual ~server_delegate(){}
 
-       virtual void on_message( const connection_ptr& c, const message& m ){};
        virtual void on_connected( const connection_ptr& c ){}
        virtual void on_disconnected( const connection_ptr& c ){}
   };
@@ -33,6 +32,13 @@ namespace bts { namespace network {
    *   on the network.  All messages are broadcast or received
    *   on a particular channel and each channel defines a protocol
    *   of message types supported on that channel.
+   *
+   *   The server will organize connections into a KAD tree for
+   *   each subscribed channel.  The ID of a node will be the
+   *   64 bit truncated SHA256(IP:PORT) which should distribute 
+   *   peers well and facilitate certain types of protocols which
+   *   do not want to broadcast everywhere, but instead to perform
+   *   targeted lookup of data in a hash table.
    */
   class server
   {
@@ -49,11 +55,16 @@ namespace bts { namespace network {
             std::vector<std::string> blacklist;  // host's that are blocked from connecting
         };
         
-        server( const bts::db::peer_ptr& peer_db );
+        server();
         ~server();
 
         void close();
 
+        /**
+         *  broadcasts the new channel subscription to all connected nodes. If less than
+         *  the minimum number of connections exist to this channel, new connections are
+         *  opened.
+         */
         void subscribe_to_channel( const channel_id& chan, const channel_ptr& c );
         void unsubscribe_from_channel( const channel_id& chan );
 
@@ -65,20 +76,38 @@ namespace bts { namespace network {
         
         /**
          * Attempts to open at least count connections to 
-         * peers.
+         * peers.  Returns a valid connection_ptr on success after calling
+         * the server_delegate::on_connected() method.
+         *
+         * @throw if there is an error connecting to EP
          */
-        void connect_to_peers( uint32_t count );
-        void configure( const config& c );
-
-        void broadcast( const message& m );
-
-        std::set<connection_ptr> connections_for_channel( const channel_id& c );
+        connection_ptr connect_to( const fc::ip::endpoint& ep );
 
         /**
-         *  Sends a message to a particular connection.
-         *  void sendto( const connection_ptr& con, const message& );
+         *  Sets up the ports and performs other one-time
+         *  initialization.   
+         *
+         *  TODO: can the user change settings while things are
+         *  running?
          */
+        void configure( const config& c );
 
+        /**
+         * Sends message to all connections subscribed to
+         * the channel specified in the message.
+         */
+        void broadcast( const message& m );
+
+        /**
+         *  @return a set of connections that are subscribed to a particular channel, prioritized
+         *          by their XOR distance from the target.
+         */
+        std::vector<connection_ptr> connections_for_channel( const channel_id& c,
+                                                             const fc::sha1& near = fc::sha1() );
+
+        /**
+         * Get all connections for any channel.
+         */
         std::vector<connection_ptr> get_connections()const;
 
       private:

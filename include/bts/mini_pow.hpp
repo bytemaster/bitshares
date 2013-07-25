@@ -2,6 +2,8 @@
 #include <fc/array.hpp>
 #include <fc/crypto/bigint.hpp>
 
+namespace fc { class sha512; }
+
 namespace bts 
 {
   /** 
@@ -59,6 +61,7 @@ namespace bts
    *
    */
   mini_pow   mini_pow_hash( const char* data, size_t len );
+  mini_pow   mini_pow_hash( const fc::sha512& seed );
 
   /**
    *  Converts the POW to a bigint so that operations may

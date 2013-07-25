@@ -56,7 +56,7 @@ int main( int argc, char** argv )
     ilog( "configuring node" );
     netw.configure( cfg.server_config );
     ilog( "connecting to peers" );
-    fc::future<void> connect_complete = fc::async( [&]() { netw.connect_to_peers( 8 ); } );
+  //  fc::future<void> connect_complete = fc::async( [&]() { netw.connect_to_peers( 8 ); } );
     ilog( "ready for commands" );
 
     bts::wallet wal;
@@ -102,7 +102,7 @@ int main( int argc, char** argv )
     }
     ilog( "waiting for connect to complete" );
     netw.close();
-    connect_complete.wait();
+   // connect_complete.wait();
   } 
   catch ( fc::exception& e )
   {

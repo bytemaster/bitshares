@@ -3,6 +3,7 @@
 #include <bts/network/server.hpp>
 #include <bts/network/channel.hpp>
 #include <fc/reflect/variant.hpp>
+#include <fc/log/logger.hpp>
 
 
 namespace bts { namespace bitname {
@@ -139,7 +140,7 @@ namespace bts { namespace bitname {
               } 
               catch ( const fc::exception& e )
               {
-                wlog( "unexpected exception handling message\n ${e}", ("e", e.to_detail_string())("message",m));
+                wlog( "unexpected exception handling message\n ${e}", ("e", e.to_detail_string()));
               }
             } 
             else

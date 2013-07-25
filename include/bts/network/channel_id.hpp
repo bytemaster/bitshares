@@ -15,17 +15,25 @@ namespace bts { namespace network {
 
   struct channel_id
   {
-     channel_id( channel_proto p = null_proto, uint32_t c = 0 )
-     :proto(p),chan(c){}
+     channel_id( channel_proto p = null_proto, uint16_t c = 0 )
+     :proto(p),chan(c)
+     {
+     }
+
+     explicit channel_id( uint32_t u )
+     {
+        chan  = u >> 8;
+        proto = (channel_proto)(u & 0x000000ff);
+     }
      /** 
       *   @brief defines the protocol being being used on a
       *          channel.
       */
-     fc::unsigned_int proto;
+     channel_proto proto;
      /**
       *    @brief identifies the channel number
       */
-     fc::unsigned_int chan;
+     uint16_t chan;
 
      friend bool operator == ( const channel_id& a, const channel_id& b )
      {
@@ -40,12 +48,28 @@ namespace bts { namespace network {
       return a.id() < b.id();
      }
 
-     uint64_t id()const
+     uint32_t id()const
      {
-        return (uint64_t(proto.value) << 32) | chan.value;
+        return (uint32_t(chan) << 8) | proto;
      }
   };
 }}  // namespace bts::network
+namespace fc { namespace raw {
+    template<typename Stream>
+    inline void pack( Stream& s, const bts::network::channel_proto& tp )
+    {
+       uint8_t p = (uint8_t)tp;
+       s.write( (const char*)&p, sizeof(p) );
+    }
+
+    template<typename Stream>
+    inline void unpack( Stream& s, bts::network::channel_proto& tp )
+    {
+       uint8_t p;
+       s.read( (char*)&p, sizeof(p) );
+       tp = bts::network::channel_proto(p);
+    }
+}}
 
 
 #include <fc/reflect/reflect.hpp>
@@ -53,6 +77,7 @@ FC_REFLECT_ENUM( bts::network::channel_proto,
     (null_proto)
     (peer_proto)
     (chat_proto)
+    (name_proto)
     (mail_proto)
 )
 

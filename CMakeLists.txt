@@ -50,23 +50,28 @@ set( BOOST_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_FIL
 
 
 set( sources 
-     src/mini_pow.cpp 
-     src/address.cpp
-     src/wallet.cpp
      src/network/stcp_socket.cpp
-     src/network/server.cpp
      src/network/connection.cpp
+     src/network/server.cpp
      src/network/get_public_ip.cpp
      src/network/upnp.cpp
-     src/db/peer_ram.cpp
-     src/bitmessage.cpp
-     src/bitchat.cpp
-     src/bitchat_message.cpp
+
+     src/peer/peer_channel.cpp
+
      src/bitname/name_miner.cpp
      src/bitname/name_block.cpp
      src/bitname/name_db.cpp
      src/bitname/name_channel.cpp
      src/bitname/name_hash.cpp
+
+     src/bitchat/bitchat_private_message.cpp
+     src/bitchat/bitchat_channel.cpp
+     src/bitchat/bitchat_client.cpp 
+
+     src/mini_pow.cpp 
+     src/address.cpp
+     src/wallet.cpp
+     src/bitmessage.cpp
 
      vendor/SFMT-src-1.4/SFMT.c
      src/proof_of_work.cpp )
@@ -87,7 +92,7 @@ add_library( bshare ${sources} )
 add_executable( bitchatc bitchat/main.cpp )
 target_link_libraries( bitchatc bshare fc ${BOOST_LIBRARIES} upnpc-static )
 
-add_executable( bitshared bitshared.cpp )
-target_link_libraries( bitshared bshare fc ${BOOST_LIBRARIES} )
+#add_executable( bitshared bitshared.cpp )
+#target_link_libraries( bitshared bshare fc ${BOOST_LIBRARIES} )
 
 add_subdirectory( tests )

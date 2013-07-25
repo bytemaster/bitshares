@@ -1,6 +1,5 @@
 #include <bts/network/server.hpp>
 #include <bts/network/connection.hpp>
-#include <bts/db/peer.hpp>
 #include <fc/network/tcp_socket.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/thread/thread.hpp>
@@ -20,8 +19,8 @@ namespace bts { namespace network {
      class server_impl : public connection_delegate
      {
         public:
-          server_impl(const bts::db::peer_ptr& pdb )
-          :peerdb(pdb),ser_del(nullptr),desired_peer_count(DESIRED_PEER_COUNT)
+          server_impl()
+          :ser_del(nullptr)
           {}
 
           ~server_impl()
@@ -55,128 +54,40 @@ namespace bts { namespace network {
                   elog( "unexpected exception" );
               }
           }
-          db::peer_ptr                                         peerdb;
-          server_delegate*                                     ser_del;
+          server_delegate*                                            ser_del;
 
-          std::unordered_map<fc::ip::endpoint,connection_ptr>  connections;
-          std::map<channel_id, std::set<connection_ptr> >      connections_by_channel;
+          std::unordered_map<fc::ip::endpoint,connection_ptr>         connections;
 
-          std::set<connection_ptr>                             pending_connections;
-          server::config                                       cfg;
-          fc::tcp_server                                       tcp_serv;
-          uint32_t                                             desired_peer_count;
-
-          bts::network::config_msg                             local_cfg;
-                                                               
-          fc::future<void>                                     accept_loop_complete;
-          fc::future<void>                                     connect_complete;
-
-          std::unordered_map<uint64_t, channel_ptr> channels;
+          std::set<connection_ptr>                                    pending_connections;
+          server::config                                              cfg;
+          fc::tcp_server                                              tcp_serv;
+                                                                     
+          fc::future<void>                                            accept_loop_complete;
+                                                                     
+          std::unordered_map<uint32_t, channel_ptr>                   channels;
 
           virtual void on_connection_message( connection& c, const message& m )
           {
-             //ilog( "received message from channel ${c} ", ("c", m.chan) ); 
-             auto itr = channels.find( m.chan.id() );
+             auto itr = channels.find( m.channel().id() );
              if( itr != channels.end() )
              {
                 // TODO: perhaps do this ASYNC?
                 itr->second->handle_message( c.shared_from_this(), m );
+             }
+             else
+             {
+                wlog( "received message from unknown channel ${c} ", ("c", m.channel()) ); 
              }
           }
 
           virtual void on_connection_disconnected( connection& c )
           {
             try {
-             ilog( "cleaning up connection after disconnect ${e}", ("e", c.remote_endpoint()) );
-             connections.erase( c.remote_endpoint() );
-             
-             auto cptr = c.shared_from_this();
-             for( auto itr = connections_by_channel.begin(); itr != connections_by_channel.end(); ++itr )
-             {
-                itr->second.erase( cptr );
-             }
+              ilog( "cleaning up connection after disconnect ${e}", ("e", c.remote_endpoint()) );
+              auto cptr = c.shared_from_this();
+              ser_del->on_disconnected( cptr );
+              connections.erase( c.remote_endpoint() );
             } FC_RETHROW_EXCEPTIONS( warn, "error thrown handling disconnect" );
-          }
-
-          void update_connection_channel_index( const config_msg& m, connection_ptr& con )
-          {
-              for( auto itr = m.subscribed_channels.begin(); itr != m.subscribed_channels.end(); ++itr )
-              {
-                 // TODO: filter here in some way to prevent spam... perhaps a white-list of valid
-                 // channels
-                 connections_by_channel[*itr].insert( con );
-              }
-          }
-
-
-
-          void connect_random_peer()
-          {
-             // TODO: make random.
-             auto recs = peerdb->get_all_peers();
-             ilog( "peers ${i}", ("i", recs.size()));
-             if( recs.size() == 0 )
-             {
-               wlog( "no known peers" );
-               FC_THROW_EXCEPTION( exception, "no known peers" );
-             }
-
-             auto rec = recs[rand()%recs.size()];
-             uint32_t cnt = 0;
-             auto itr = connections.find(rec.contact);
-             while( cnt < recs.size() && (itr != connections.end()) )
-             {
-                 rec = recs[rand()%recs.size()];
-                 ++cnt;
-                 itr = connections.find(rec.contact);
-             }
-             if (itr != connections.end() )
-             {
-                wlog( "no new peers to connect to" );
-                FC_THROW_EXCEPTION( exception, "unable to find any new peers to connect to" );
-             }
-
-             try 
-             {
-                auto con = std::make_shared<connection>();
-                pending_connections.insert(con);
-
-                ilog( "connect to ${c}", ("c", rec.contact) );
-                con->set_delegate( this );
-                con->connect( rec.contact, local_cfg );
-                peerdb->update_last_com( rec.contact, fc::time_point::now() );
-                connections[rec.contact] = con;
-
-                auto remote_cfg = con->remote_config();
-                update_connection_channel_index( remote_cfg, con );
-
-                if( remote_cfg.public_contact != fc::ip::endpoint() )
-                {
-                   bts::db::peer::record rec;
-                   rec.contact  = remote_cfg.public_contact;
-                   rec.channels = std::move(remote_cfg.subscribed_channels);
-                   rec.features = std::move(remote_cfg.supported_features);
-                   rec.last_com = fc::time_point::now();
-                   peerdb->store( rec );
-                }
-                
-                pending_connections.erase(con);
-
-                /*
-                std::vector<connection_ptr>& vec = pending_connections;
-                vec.erase(std::remove(vec.begin(), vec.end(), con), vec.end());
-                */
-
-                if( ser_del ) ser_del->on_connected(con);
-             } 
-             catch ( fc::canceled_exception& e )
-             {
-             }
-             catch ( fc::exception& e )
-             {
-                wlog( "unable to connect to peer: ${e}", ("e", e.to_detail_string()) );
-                throw;
-             }
           }
 
           /**
@@ -192,26 +103,11 @@ namespace bts { namespace network {
              {
                 // init DH handshake
                 s->accept();
-                ilog( "accepted connection from ${ep}", ("ep", std::string(s->get_socket().remote_endpoint()) ) );
+                ilog( "accepted connection from ${ep}", 
+                      ("ep", std::string(s->get_socket().remote_endpoint()) ) );
                 
-                auto con = std::make_shared<connection>(s,local_cfg);
-                con->set_delegate( this );
-                
-                // TODO: if the connection hangs and server_impl is
-                // deleted prior to reaching this step we may have
-                // a problem... 
+                auto con = std::make_shared<connection>(s,this);
                 connections[con->remote_endpoint()] = con;
-
-                config_msg c = con->remote_config();
-                for( auto itr = c.subscribed_channels.begin();
-                          itr != c.subscribed_channels.end();
-                          ++itr )
-                {
-                    connections_by_channel[*itr].insert(con);
-                }
-
-                // TODO: add delegate to handle disconnect
-                con->start();
              } 
              catch ( const fc::canceled_exception& e )
              {
@@ -242,7 +138,7 @@ namespace bts { namespace network {
 
                    // limit the rate at which we accept connections to prevent
                    // DOS attacks.
-                   fc::usleep( fc::microseconds( 1000*30 ) );
+                   fc::usleep( fc::microseconds( 1000*10 ) );
                    sock = std::make_shared<stcp_socket>();
                 }
              } 
@@ -269,50 +165,21 @@ namespace bts { namespace network {
 
 
 
-  server::server(const bts::db::peer_ptr& pdb ) 
-  :my( new detail::server_impl(pdb) ){}
+  server::server()
+  :my( new detail::server_impl() ){}
 
   server::~server()
-  {
-     try 
-     {
-        if( my->connect_complete.valid() && !my->connect_complete.ready() )
-        {
-             my->connect_complete.cancel();
-             my->connect_complete.wait();
-        }
-     } 
-     catch ( ... )
-     {
-         wlog( "unhandled exception" );
-     }
-  }
+  { }
 
   void server::subscribe_to_channel( const channel_id& chan, const channel_ptr& c )
   {
      FC_ASSERT( my->channels.find(chan.id()) == my->channels.end() );
-
      my->channels[chan.id()] = c;
-     my->local_cfg.subscribed_channels.insert( chan );
-
-     subscribe_msg sm;
-     sm.channels.push_back(chan);
-
-     broadcast( message( sm, channel_id( peer_proto ) ) );
-
-     //TODO notify all of my peers that I am now subscribing to chan
   }
 
   void server::unsubscribe_from_channel( const channel_id&  chan )
   {
-     return; // TODO: fix this method, it causees a crash on exit in asio code
      my->channels.erase(chan.id());
-     //TODO notify all of my peers that I am no longer subscribign to chan
-     
-     unsubscribe_msg sm;
-     sm.channels.push_back(chan);
-
-     broadcast( message( sm, channel_id( peer_proto ) ) );
   }
 
   void server::set_delegate( server_delegate* sd )
@@ -324,90 +191,21 @@ namespace bts { namespace network {
   {
       // TODO: should I check to make sure we haven't already been configured?
       my->cfg = c;
+      /*
       for( uint32_t i = 0; i < c.bootstrap_endpoints.size(); ++i )
       {
          db::peer::record r;
          r.contact = fc::ip::endpoint::from_string(c.bootstrap_endpoints[i]);
          my->peerdb->store( r );
       }
+      */
 
       ilog( "listening for stcp connections on port ${p}", ("p",c.port) );
       my->tcp_serv.listen( c.port );
       my->accept_loop_complete = fc::async( [=](){ my->accept_loop(); } ); 
   }
 
-  /**
-   *  Starts an async process of connecting to peers of we are connected to 
-   *  less than count peers and we are not already attempting to connect to
-   *  peers.  The process will stop once count peers are found and connected.
-   */
-  void server::connect_to_peers( uint32_t count )
-  {
-     my->desired_peer_count = count;
 
-     // don't do anything if we are already trying to connect to peers.
-     if( my->connect_complete.valid() && !my->connect_complete.ready() )
-     {
-        return; // already in the process of connecting
-     }
-
-     // do this process async because it could take a while.
-     my->connect_complete = fc::async( [=](){
-        // do not use iterators here because connect_next_peer could yield and
-        // invalidate iterators, indexes are safe because we check them after
-        // every operation.
-        for( uint32_t i = my->connections.size(); i < my->desired_peer_count; ++i )
-        {
-           my->connect_random_peer();
-        }
-     });
-  }
-
-  void server::broadcast( const message& m )
-  {
-     // allocate on heap and reference count so that multiple async
-     // operations can reference the same buffer.
-     if( m.chan == channel_id( peer_proto ) )
-     {
-        auto buf = std::make_shared<std::vector<char>>(fc::raw::pack(m));
-        for( auto itr = my->connections.begin();
-             itr != my->connections.end();
-             ++itr ) //uint32_t i = 0; i < my->connections.size(); ++i )
-        {
-           auto tmp = itr->second;
-           fc::async( [tmp,buf](){ tmp->send( *buf ); } );
-        }
-     }
-     else
-     {
-        auto itr = my->connections_by_channel.find( m.chan );
-        if( itr == my->connections_by_channel.end() )
-        {
-           FC_THROW_EXCEPTION( exception, "no connections subscribing to channel ${c}", ("c", m.chan) );
-        }
-        auto buf = std::make_shared<std::vector<char>>(fc::raw::pack(m));
-        for( auto con = itr->second.begin(); con != itr->second.end(); ++con )
-        {
-              auto tmp = *con;
-              fc::async( [tmp,buf](){ tmp->send( *buf ); } );
-        }
-     }
-  }
-  std::set<connection_ptr> server::connections_for_channel( const channel_id& c )
-  {
-      auto itr = my->connections_by_channel.find( c );
-      if( itr == my->connections_by_channel.end() )
-      {
-         FC_THROW_EXCEPTION( exception, "no connections subscribing to channel ${c}", ("c", c) );
-      }
-      return itr->second;
-  }
-
-  /**
-  void server::sendto( const connection_ptr& con, const message& m )
-  {
-  }
-  */
 
   std::vector<connection_ptr> server::get_connections()const
   {

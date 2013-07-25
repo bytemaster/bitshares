@@ -87,6 +87,7 @@ BOOST_AUTO_TEST_CASE( wallet_test )
    */
 }
 
+/*
 BOOST_AUTO_TEST_CASE( bitmessage_test )
 {
   try {
@@ -163,3 +164,4 @@ BOOST_AUTO_TEST_CASE( bitchat_message_test )
      throw;
   }
 }
+*/
